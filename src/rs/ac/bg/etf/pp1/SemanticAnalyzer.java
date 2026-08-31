@@ -25,6 +25,8 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 	private Struct assing$type; //menja se na svakom '=' 
 	
 	
+	private Set<Obj> abstractMethods = new HashSet<>(); //za proveru implementacije 
+													// abs metoda klase 
 	
 	
 	private ArrayDeque<Obj> class$methods = new ArrayDeque<>();
@@ -357,10 +359,28 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 	public void visit(ClassDecl ClassDecl) {
 		Tab.chainLocalSymbols(struct$holder);
 		Tab.closeScope();
+		for(var obj : struct$holder.getMembers()) {
+			if(obj.getKind() == Obj.Fld) {
+				obj.setAdr(obj.getAdr() + 1);
+			}
+			// ostavljamo mesto za VTable ove klase 
+		}
+		isImplemented(struct$holder, ClassDecl);
+		resolved$type.put(ClassDecl, struct$holder);
 		struct$holder = null; 
 		part$of$class = false; 
 	}
 	
+	private void isImplemented(Struct concreteClass, SyntaxNode node) {
+	    for (var member : concreteClass.getMembers()) {
+	        if (member.getKind() == Obj.Meth && abstractMethods.contains(member)) {
+	            //ulazi ovde ako je onaj isti objekat iz klase iznad
+	        	//ako je redefinisan promenice se u methodname novim objektom
+	        	
+	        	report_error(member.getName() + " nije implementirana u ovoj klasi", node);
+	        }
+	    }
+	}
 	@Override
 	public void visit(ClassName ClassName) {
 		current$name = ClassName.getI1();
@@ -435,15 +455,17 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 				    if (!expectedType.equals(obj.getType())) {
 				        report_error(current$name + " redefinicija mora imati isti povratni tip kao u baznoj klasi", MethodName);
 				    }
-				    obj$holder = new Obj(obj.getKind(), "nista", obj.getType());
-				    obj$holder.setLevel(0);
-				    decObj = obj;
-				    is$void = false;
-				    Tab.openScope();
-				    already$declared = true;
-				    // THIS KOD KLASA 
-				    Obj this$obj = Tab.insert(Obj.Var, "this", struct$holder);
-				    this$obj.setFpPos(Obj.NO_VALUE);
+				    decObj = obj;  
+			        Tab.currentScope().getLocals().deleteKey(current$name);
+			        obj$holder = Tab.insert(Obj.Meth, current$name, expectedType);
+			        obj$holder.setLevel(0);
+
+			        is$void = false;
+			        Tab.openScope();
+			        already$declared = true;
+
+			        Obj this$obj = Tab.insert(Obj.Var, "this", struct$holder);
+			        this$obj.setFpPos(Obj.NO_VALUE);
 			}
 		}
 		else {
@@ -495,6 +517,13 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 	public void visit(AbstractClassDecl AbstractClassDecl) {
 		Tab.chainLocalSymbols(struct$holder);
 		Tab.closeScope();
+		for(var obj : struct$holder.getMembers()) {
+			if(obj.getKind() == Obj.Fld) {
+				obj.setAdr(obj.getAdr() + 1);
+			}
+			// ostavljamo mesto za VTable ove klase 
+		}
+		resolved$type.put(AbstractClassDecl, struct$holder);
 		struct$holder = null;
 	}
 	@Override
@@ -518,6 +547,7 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 	public void visit(AbstractMethodDecl AbstractMethodDecl) {
 		Tab.chainLocalSymbols(obj$holder);
 		Tab.closeScope();
+		abstractMethods.add(obj$holder);
 		obj$holder = null;
 	}
 	@Override

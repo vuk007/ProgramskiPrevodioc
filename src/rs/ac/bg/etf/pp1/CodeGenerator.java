@@ -1,6 +1,6 @@
 package rs.ac.bg.etf.pp1;
 
-import java.time.format.ResolverStyle;
+
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -21,14 +21,20 @@ public class CodeGenerator extends VisitorAdaptor{
 	
 	private Struct current$type = null;
 	
-	private ArrayDeque<Obj> current$this = new ArrayDeque<>();
+	private Obj current$this = null;
 	
+	private ArrayDeque<Obj> callBase$stack = new ArrayDeque<>();
+	
+	
+	private Map<Struct, Integer> vtable$adr= new HashMap<>();
 	private Map<SyntaxNode, Obj> obj$pointers = new HashMap<>();
 	private Map<SyntaxNode, Struct> type$pointers = new HashMap<>();
 	
 	private ArrayDeque<Obj> designator$stack = new ArrayDeque<>();
+	private ArrayDeque<Integer> jmp$fix$adrr = new ArrayDeque<>();
 	
 	private ArrayDeque<List<Integer>> false$list$stack = new ArrayDeque<>();
+	// lista listi za popunjavanje skoka 
 	private ArrayDeque<List<Integer>> true$list$stack = new ArrayDeque<>();
 	private void printDesignatorStack() {
 	    for (Obj obj : designator$stack) {
@@ -86,22 +92,22 @@ public class CodeGenerator extends VisitorAdaptor{
 		code.loadConst(BoolVal.getB1());;
 		current$type = bool$type;
 	}
+	
 	@Override
 	public void visit(StatementPrint StatementPrint) {
-		code.put(code.const_n);
-		if(current$type.equals(Tab.intType)) {
-			code.put(code.print);
-		}
-		else {
-			code.put(code.bprint);
-		}
+	    code.put(code.const_n);
+	    if (current$type.equals(Tab.intType) || current$type.equals(bool$type)) {
+	        code.put(code.print);
+	    } else {
+	        code.put(code.bprint);
+	    }
 	}
 	
 	private Struct printedType;
 
 	@Override
 	public void visit(PrintExprEnd PrintExprEnd) {
-	    printedType = current$type;   // snimi PRE nego sto numConst stigne da ga prepise
+	    printedType = current$type;  
 	}
 
 	@Override
@@ -118,15 +124,44 @@ public class CodeGenerator extends VisitorAdaptor{
 	
 	@Override
 	public void visit(StatementReturn StatementReturn) {
+		// void return 
 	    Code.put(Code.exit);
 	    Code.put(Code.return_);
 	}
 
 	@Override
 	public void visit(StatementReturnExpr StatementReturnExpr) {
+		// isto totalno kao return 
 	    Code.put(Code.exit);
 	    Code.put(Code.return_);
 	}
+	
+	private void emitVtableSetup() {
+	    for (Map.Entry<Struct, Integer> entry : vtable$adr.entrySet()) {
+	        Struct classType = entry.getKey();
+	        int addr = entry.getValue();
+	        for (Obj member : classType.getMembers()) {
+	            if (member.getKind() != Obj.Meth) continue;
+	            String name = member.getName();
+	            for (int i = 0; i < name.length(); i++) {
+	                Code.loadConst(name.charAt(i));
+	                Code.put(Code.putstatic);
+	                Code.put2(addr++);
+	            }
+	            Code.loadConst(-1);
+	            Code.put(Code.putstatic);
+	            Code.put2(addr++);
+
+	            Code.loadConst(member.getAdr());
+	            Code.put(Code.putstatic);
+	            Code.put2(addr++);
+	        }
+	        Code.loadConst(-2);
+	        Code.put(Code.putstatic);
+	        Code.put2(addr++);
+	    }
+	}
+	
 	
 	@Override
 	public void visit(MethodName MethodName) {
@@ -139,29 +174,34 @@ public class CodeGenerator extends VisitorAdaptor{
 	    int localAdr = 0;
 	    for (Obj o : method.getLocalSymbols()) {
 	        if (o.getKind() == Obj.Var) {
-	            o.setAdr(localAdr++);  
+	            o.setAdr(localAdr++);
 	            if (o.getName().equals("this")) {
-	            	hasThis = true;
-	            	current$this.add(o);
-	            } 
+	                hasThis = true;
+	                current$this = o;
+	            }
 	        }
 	    }
-	    
+
 	    Code.put(Code.enter);
-	    // dodaj i this u broj parametra ako postoji
-	    Code.put(method.getLevel()+ (hasThis ? 1 : 0));
-	    Code.put(localAdr);            	
+	    Code.put(method.getLevel() + (hasThis ? 1 : 0));
+	    Code.put(localAdr);
+
+	    if (method.getName().equals("main")) {   
+	        emitVtableSetup();
+	    }
 	}
 	
 	// ucitavanje svih objekata po imenu
 	@Override
 	public void visit(DesignatorIdent DesignatorIdent) {
 	    Obj obj = obj$pointers.get(DesignatorIdent);
-	    if (obj.getKind() == Obj.Meth && methodNeedsThis(obj)) {
-	        Code.load(current$this.pop());   // implicitni this - poziv sopstvene metode klase
+	    if (obj.getKind() == Obj.Fld) {
+	        Code.load(current$this);  
+	    } else if (obj.getKind() == Obj.Meth && methodNeedsThis(obj)) {
+	        Code.load(current$this);
+	        callBase$stack.push(current$this);
 	    }
 	    designator$stack.push(obj);
-	    printDesignatorStack();
 	}
 	private static final Obj LENGTH_DONE = new Obj(Obj.Con, "$len", Tab.intType);
 	//operacije sa designatorima 
@@ -201,17 +241,40 @@ public class CodeGenerator extends VisitorAdaptor{
 	        current$type = obj.getType();
 	        Code.load(obj);
 	    }
-	    printDesignatorStack();
 	}
+	
+	//ARITMETICKE OPERACIJE 
+	
+	private enum arith { ADD, SUB, MUL, DIV, MOD }
+	private arith current$add$op;
+	private arith current$mul$op;
+	
+	@Override
+	public void visit(AddopADD AddopADD) { current$add$op = arith.ADD; }
+	@Override
+	public void visit(AddopMIN AddopMIN) { current$add$op = arith.SUB; }
+	@Override
+	public void visit(MulopMUL MulopMUL) { current$mul$op = arith.MUL; }
+	@Override
+	public void visit(MulopDIV MulopDIV) { current$mul$op = arith.DIV; }
+	@Override
+	public void visit(MulopMOD MulopMOD) { current$mul$op = arith.MOD; }
+	
 	@Override
 	public void visit(TermMul TermMul) {
-		code.put(code.mul);
-		current$type = Tab.intType; //garantovano SemAnal
+		// izvrsava se pre sabiranja tako da je 
+		//osigurana leva asocijativnost 
+	    switch (current$mul$op) {
+	        case DIV: Code.put(Code.div); break;
+	        case MOD: Code.put(Code.rem); break;
+	        default: Code.put(Code.mul); break;
+	    }
+	    current$type = Tab.intType;
 	}
 	@Override
 	public void visit(AddExprAdd AddExprAdd) {
-		code.put(code.add);
-		current$type = Tab.intType; //garantovano SemAnal
+	    Code.put(current$add$op == arith.SUB ? Code.sub : Code.add);
+	    current$type = Tab.intType;
 	}
 	@Override
 	public void visit(AddExprNeg node) {
@@ -263,6 +326,7 @@ public class CodeGenerator extends VisitorAdaptor{
 	public void visit(MethodDecl MethodDecl) {
 	    Code.put(Code.exit);
 	    Code.put(Code.return_);
+	    current$this = null;   // reset za sledecu metodu
 	}
 	
 	// dodela vrednosti 
@@ -274,20 +338,44 @@ public class CodeGenerator extends VisitorAdaptor{
 	
 	// POZIVI METODA
 	private void generateCall(Obj method) {
-	    Code.put(Code.call);
-	    Code.put2(method.getAdr() - Code.pc + 1);   // sirina 2 polja za adr 
+	    if (methodNeedsThis(method)) {
+	        Obj base = callBase$stack.pop();
+	        Code.load(base);
+	        Code.put(Code.getfield);
+	        Code.put2(0);
+	        emitInvokevirtual(method.getName());
+	    } else {
+	        Code.put(Code.call);
+	        Code.put2(method.getAdr() - Code.pc + 1);
+	    }
+	}
+	
+	private void emitInvokevirtual(String name) {
+	    Code.put(Code.invokevirtual);
+	    for (int i = 0; i < name.length(); i++) {
+	        Code.put4(name.charAt(i));
+	    }
+	    Code.put4(-1);
 	}
 
 	@Override
-	public void visit(FactorCallPars printDesignatorStack) { generateCall(designator$stack.pop()); }
+	public void visit(FactorCallPars printDesignatorStack) {
+		 Obj method = designator$stack.pop();
+		 generateCall(method);
+		 current$type = method.getType();
+	}
 	@Override
-	public void visit(FactorCallNoPars FactorCallNoPars) { generateCall(designator$stack.pop()); }
+	public void visit(FactorCallNoPars FactorCallNoPars) {
+		 	Obj method = designator$stack.pop();
+		    generateCall(method);
+		    current$type = method.getType();
+		}
 	@Override
 	public void visit(DesignatorCallPars node) {
 	    Obj meth = designator$stack.pop();
 	    generateCall(meth);
 	    if (!meth.getType().equals(Tab.noType)) Code.put(Code.pop); // povratna vrednost
-	}
+	}		// skida ako je void
 	@Override
 	public void visit(DesignatorCallNoPars FactorCallNoPars) {
 	    Obj meth = designator$stack.pop();
@@ -312,50 +400,30 @@ public class CodeGenerator extends VisitorAdaptor{
 	enum relop {EQ , NEQ , LE , LT , GT ,GE}
 	@Override
 	public void visit(CondFactRel CondFactRel) {
-		jmp$fix$adrr.push(code.pc+1);
-		switch (current$rel$op) {
-		case EQ: {
-			code.putFalseJump(code.eq, 0);
-			break;
-		}
-		case NEQ:
-		{
-			code.putFalseJump(code.eq, 0);
-			break;
-		}
-		case LE:
-		{
-			code.putFalseJump(code.le,0);
-			break;
-		}
-		case LT:
-		{
-			code.putFalseJump(code.lt,0);
-			break;
-		}
-		case GT:
-		{
-			code.putFalseJump(code.gt,0);
-			break;
-		}
-		case GE:
-		{
-			code.putFalseJump(code.ge,0);
-			break;
-		}
-		default:
-			throw new IllegalArgumentException("Unexpected value: " + current$rel$op);
-		}
-		current$rel$op = null;
+	    List<Integer> f = new ArrayList<>();
+	    f.add(Code.pc + 1);
+	    switch (current$rel$op) {
+	        case EQ: Code.putFalseJump(Code.eq, 0); break;
+	        case NEQ: Code.putFalseJump(Code.ne, 0); break;
+	        case LE: Code.putFalseJump(Code.le, 0); break;
+	        case LT: Code.putFalseJump(Code.lt, 0); break;
+	        case GT: Code.putFalseJump(Code.gt, 0); break;
+	        case GE: Code.putFalseJump(Code.ge, 0); break;
+	    }
+	    current$rel$op = null;
+	    false$list$stack.push(f);
+	    true$list$stack.push(new ArrayList<>());  
 	}
 	
 	@Override
 	public void visit(CondFactExpr CondFactExpr) {
 	    Code.loadConst(0);
-	    jmp$fix$adrr.push(Code.pc + 1);
-	    Code.putFalseJump(Code.ne, 0);   
+	    List<Integer> f = new ArrayList<>();
+	    f.add(Code.pc + 1);
+	    Code.putFalseJump(Code.ne, 0);
+	    false$list$stack.push(f);
+	    true$list$stack.push(new ArrayList<>());
 	}
-	
 	@Override
 	public void visit(RelopEQ RelopEQ) {
 		current$rel$op = relop.EQ;
@@ -381,26 +449,85 @@ public class CodeGenerator extends VisitorAdaptor{
 		current$rel$op = relop.GE;
 	}
 	
+	
+	@Override
+	public void visit(CondTermAnd CondTermAnd) {
+		//zamena mesta levog i desnog stacka jer levi ispada 
+		// ova zamena se radi do CONDFACT kad stigne on je poslednji 
+	    List<Integer> rightFalse = false$list$stack.pop();
+	    List<Integer> rightTrue = true$list$stack.pop();
+	    List<Integer> leftFalse = false$list$stack.pop();
+	    List<Integer> leftTrue = true$list$stack.pop();
+
+	    leftFalse.addAll(rightFalse);
+	    leftTrue.addAll(rightTrue);
+
+	    false$list$stack.push(leftFalse);
+	    true$list$stack.push(leftTrue);
+	    
+	}
+	
+	private ArrayDeque<List<Integer>> pendingOrTrue$stack = new ArrayDeque<>();
+
+	@Override
+	public void visit(OrMarker OrMarker) {
+	    List<Integer> leftFalse = false$list$stack.pop();
+	    List<Integer> leftTrue = true$list$stack.pop();
+
+	    List<Integer> jumpToTrue = new ArrayList<>();
+	    jumpToTrue.add(Code.pc + 1);
+	    Code.putJump(0);   // ako je levo tacno, preskoci desni operand
+
+	    for (int adr : leftFalse) Code.fixup(adr);   // ako je levo netacno, PADNI OVDE i probaj desno
+
+	    leftTrue.addAll(jumpToTrue);
+	    pendingOrTrue$stack.push(leftTrue);
+	}
+
+	@Override
+	public void visit(ConditionOr ConditionOr) {
+		//isti princip kao kod AND 
+	    List<Integer> rightFalse = false$list$stack.pop();
+	    List<Integer> rightTrue = true$list$stack.pop();
+	    List<Integer> leftTrue = pendingOrTrue$stack.pop();
+
+	    leftTrue.addAll(rightTrue);
+
+	    false$list$stack.push(rightFalse);
+	    true$list$stack.push(leftTrue);
+	}
+	
+	private ArrayDeque<List<Integer>> pendingIfFalse$stack = new ArrayDeque<>();
+	
+
+	@Override
+	public void visit(IfCond IfCond) {
+	    List<Integer> falseList = false$list$stack.pop();
+	    List<Integer> trueList = true$list$stack.pop();
+	    for (int adr : trueList) Code.fixup(adr);   // patch SADA - tacno pocetak then-grane
+	    pendingIfFalse$stack.push(falseList);        // false ostaje za kasnije (kao i pre)
+	}
 	@Override
 	public void visit(StatementIf StatementIf) {
-		var val = jmp$fix$adrr.pop().intValue(); 
-		code.fixup(val);
+	    for (int adr : pendingIfFalse$stack.pop()) Code.fixup(adr);
 	}
 	
 	@Override
 	public void visit(StatementIfElse StatementIfElse) {
-		var val = jmp$fix$adrr.pop().intValue(); 
-		code.fixup(val);
+	    for (int adr : pendingIfFalse$stack.pop()) Code.fixup(adr);
 	}
-	
 	@Override
 	public void visit(ElseJmp ElseJmp) {
-		var val = jmp$fix$adrr.pop().intValue(); 
-		code.putJump(0);
-		code.fixup(val);
-		jmp$fix$adrr.push(code.pc+1);
+	    List<Integer> falseList = pendingIfFalse$stack.pop();
+	    List<Integer> skipElse = new ArrayList<>();
+	    skipElse.add(Code.pc + 1);
+	    Code.putJump(0);
+	    for (int adr : falseList) Code.fixup(adr);
+	    List<Integer> wrapped = new ArrayList<>();
+	    wrapped.add(skipElse.get(0));
+	    pendingIfFalse$stack.push(wrapped);
 	}
-	
+
 	
 	// FOR STATEMENT
 	private ArrayDeque<List<Integer>> break$stack = new ArrayDeque<>();
@@ -412,14 +539,22 @@ public class CodeGenerator extends VisitorAdaptor{
 	private ArrayDeque<Boolean> for$has$cond = new ArrayDeque<>();
 	private int for$phase = 0;   // 0=ocekuje init, 1=ocekuje uslov, 2=ocekuje inkrement
 
+	
+	private ArrayDeque<List<Integer>> for$false$list = new ArrayDeque<>();
 	private void forHeaderCycle() {
 	    if (for$phase == 0) {
 	        for$cond$start.push(Code.pc);
 	        for$phase = 1;
 	    } else if (for$phase == 1) {
-	    	jmp$fix$adrr.push(code.pc+1);
-	        Code.putJump(0);  
-	        for$over$start.push(Code.pc );  
+	        if (for$has$cond.peek()) {
+	            List<Integer> falseList = false$list$stack.pop();
+	            List<Integer> trueList = true$list$stack.pop();
+	            for (int adr : trueList) Code.fixup(adr);   
+	            for$false$list.push(falseList);              
+	        }
+	        jmp$fix$adrr.push(code.pc + 1);
+	        Code.putJump(0);
+	        for$over$start.push(Code.pc);
 	        for$phase = 2;
 	    } else {
 	        for$phase = 0;
@@ -445,27 +580,26 @@ public class CodeGenerator extends VisitorAdaptor{
 	@Override
 	public void visit(ForHeader ForHeader) {
 	    int condAdr = for$cond$start.pop();
-	    Code.putJump(condAdr);                         	
-	    Code.fixup(jmp$fix$adrr.pop()); 
-	    
+	    Code.putJump(condAdr);
+	    Code.fixup(jmp$fix$adrr.pop());   
+
 	    break$stack.push(new ArrayList<>());
-	    continue$target$stack.push(for$over$start.peek());   
+	    continue$target$stack.push(for$over$start.peek());
 	}
 
 	@Override
 	public void visit(StatementFor StatementFor) {
 	    boolean hadCond = for$has$cond.pop();
 	    int overStart = for$over$start.pop();
-	    Code.putJump(overStart);          
+	    Code.putJump(overStart);
 	    if (hadCond) {
-	        Code.fixup(jmp$fix$adrr.pop()); 
+	        for (int adr : for$false$list.pop()) Code.fixup(adr);
 	    }
 	    continue$target$stack.pop();
 	    for (int patchAdr : break$stack.pop()) {
 	        Code.fixup(patchAdr);
 	    }
 	}
-	
 	@Override
 	public void visit(StatementBreak StatementBreak) {
 	    break$stack.peek().add(Code.pc + 1);  
@@ -493,7 +627,7 @@ public class CodeGenerator extends VisitorAdaptor{
 	@Override
 	public void visit(DesignatorArrayElem DesignatorArrayElem) {
 		Obj obj = designator$stack.pop();
-		memory$indirect$read(obj.getAdr());
+		code.load(obj);
 		
 		//zamena mesta//
 			code.put(code.dup_x1);
@@ -511,7 +645,13 @@ public class CodeGenerator extends VisitorAdaptor{
 	public void visit(FactorNewObj FactorNewObj) {
 		var struct = type$pointers.get(FactorNewObj);
 		code.put(code.new_);
-		code.put2(struct.getNumberOfFields() * 4);
+		code.put2((struct.getNumberOfFields()+1) * 4);
+		// *4 jer svako polje je 32b 
+		
+	    code.put(code.dup);
+	    code.loadConst(vtable$adr.get(struct)); 
+	    code.put(code.putfield);
+	    code.put2(0);
 	}
 	
 	@Override
@@ -522,6 +662,9 @@ public class CodeGenerator extends VisitorAdaptor{
 	    Obj instance = designator$stack.pop();
 	    if (instance.getKind() != Obj.Type) {   // preskoci load ako je baza samo ime tipa (enum)
 	        code.load(instance);
+	        if (field.getKind() == Obj.Meth) {
+	            callBase$stack.push(instance);
+	        }
 	    }
 	    designator$stack.push(field);
 	}
@@ -531,4 +674,30 @@ public class CodeGenerator extends VisitorAdaptor{
 	    Iterator<Obj> it = meth.getLocalSymbols().iterator();
 	    return it.hasNext() && it.next().getName().equals("this");
 	}
+
+	@Override
+	public void visit(ClassDecl ClassDecl) {
+		 int base = Code.dataSize;
+		Struct current$class$struct = type$pointers.get(ClassDecl);
+	    vtable$adr.put(current$class$struct, base);
+
+	    int size = 0;
+	    for (Obj member : current$class$struct.getMembers()) {
+	        if (member.getKind() != Obj.Meth) continue;
+	        size += member.getName().length() + 2;   // karakteri + (-1) + adresa
+	    }
+	    size += 1;   // finalni -2
+
+	    Code.dataSize += size;
+	}
+
+@Override
+public void visit(ClassDeclEmpty n) { visit((ClassDecl)n); }
+@Override
+public void visit(ClassDeclNoVars n) {visit((ClassDecl)n); }
+@Override
+public void visit(ClassDeclNoMeth n) { visit((ClassDecl)n); }
+@Override
+public void visit(ClassDeclVarMeth n) { visit((ClassDecl)n); }
 }
+

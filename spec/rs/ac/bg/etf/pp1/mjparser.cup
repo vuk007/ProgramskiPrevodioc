@@ -27,8 +27,8 @@ nonterminal Program, ProgramName, DeclList, Decl, ConstDecl, VarDecl, Type,
 
 nonterminal Statement, StatementList, DesignatorStatement, Designator,
 			ActPars, Expr, AddExpr, Term, Factor,
-			Condition, CondTerm, CondFact, Assignop, Relop,
-			Addop, Mulop, CaseList, CaseStmt, ElseJmp, 
+			Condition, CondTerm, CondFact, Assignop, Relop, IfCond,
+			Addop, Mulop, CaseList, CaseStmt, ElseJmp, OrMarker, 
 			OptDesignatorStatement, OptCondition, PrintExprEnd,
 			VarDeclClassList, ClassDecl, ClassName, ExtendsType,
 			AbstractClassDecl, AbstractMethodDeclList, AbstractMethodDeclItem,
@@ -249,10 +249,12 @@ Factor ::= (FactorNum) numConst
 		 (FactorCallNoPars) Designator LPAREN RPAREN
 		 ;
 
-Condition ::= (ConditionOr) Condition OR CondTerm
+Condition ::= (ConditionOr) Condition OrMarker OR CondTerm
 			|
 			(ConditionTerm) CondTerm
 			;
+
+OrMarker ::= (OrMarker) /* epsilon */;
 
 CondTerm ::= (CondTermAnd) CondTerm AND CondFact
 		   |
@@ -272,9 +274,9 @@ Statement ::= (StatementDesignator) DesignatorStatement SEMI
 			|
 			(StatementPrintWidth) PRINT LPAREN  Expr PrintExprEnd COMMA numConst RPAREN SEMI
 			|
-			(StatementIf) IF LPAREN Condition RPAREN Statement
+			(StatementIf) IF LPAREN Condition RPAREN IfCond Statement
 			|
-			(StatementIfElse) IF LPAREN Condition RPAREN Statement ElseJmp Statement
+			(StatementIfElse) IF LPAREN Condition RPAREN IfCond Statement ElseJmp Statement
 			|
 			(StatementIfElseRecover) IF LPAREN error RPAREN Statement ELSE Statement
 			| 
@@ -296,6 +298,8 @@ Statement ::= (StatementDesignator) DesignatorStatement SEMI
 			|
 			(StatementRecovery)error SEMI
 			;
+
+IfCond ::= (IfCond)/*epsilon*/;
 
 PrintExprEnd ::= (PrintExprEnd) /* epsilon */;
 

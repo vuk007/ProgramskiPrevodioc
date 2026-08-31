@@ -64,12 +64,14 @@ nonterminal CondTerm CondTerm;
 nonterminal CondFact CondFact;
 nonterminal Assignop Assignop;
 nonterminal Relop Relop;
+nonterminal IfCond IfCond;
 nonterminal
 			Addop Addop;
 nonterminal Mulop Mulop;
 nonterminal CaseList CaseList;
 nonterminal CaseStmt CaseStmt;
 nonterminal ElseJmp ElseJmp;
+nonterminal OrMarker OrMarker;
 nonterminal 
 			OptDesignatorStatement OptDesignatorStatement;
 nonterminal OptCondition OptCondition;
@@ -304,10 +306,12 @@ Factor ::= (FactorNum) numConst:n1 {: RESULT=new FactorNum(n1); RESULT.setLine(n
 		 (FactorCallNoPars) Designator:D1 LPAREN RPAREN {: RESULT=new FactorCallNoPars(D1); RESULT.setLine(D1left); :}
 		 ;
 
-Condition ::= (ConditionOr) Condition:C1 OR CondTerm:C2 {: RESULT=new ConditionOr(C1, C2); RESULT.setLine(C1left); :}
+Condition ::= (ConditionOr) Condition:C1 OrMarker:O2 OR CondTerm:C3 {: RESULT=new ConditionOr(C1, O2, C3); RESULT.setLine(C1left); :}
 			|
 			(ConditionTerm) CondTerm:C1 {: RESULT=new ConditionTerm(C1); RESULT.setLine(C1left); :}
 			;
+
+OrMarker ::= (OrMarker) {: RESULT=new OrMarker(); :} /* epsilon */;
 
 CondTerm ::= (CondTermAnd) CondTerm:C1 AND CondFact:C2 {: RESULT=new CondTermAnd(C1, C2); RESULT.setLine(C1left); :}
 		   |
@@ -327,9 +331,9 @@ Statement ::= (StatementDesignator) DesignatorStatement:D1 SEMI {: RESULT=new St
 			|
 			(StatementPrintWidth) PRINT LPAREN  Expr:E1 PrintExprEnd:P2 COMMA numConst:n3 RPAREN SEMI {: RESULT=new StatementPrintWidth(E1, P2, n3); RESULT.setLine(E1left); :}
 			|
-			(StatementIf) IF LPAREN Condition:C1 RPAREN Statement:S2 {: RESULT=new StatementIf(C1, S2); RESULT.setLine(C1left); :}
+			(StatementIf) IF LPAREN Condition:C1 RPAREN IfCond:I2 Statement:S3 {: RESULT=new StatementIf(C1, I2, S3); RESULT.setLine(C1left); :}
 			|
-			(StatementIfElse) IF LPAREN Condition:C1 RPAREN Statement:S2 ElseJmp:E3 Statement:S4 {: RESULT=new StatementIfElse(C1, S2, E3, S4); RESULT.setLine(C1left); :}
+			(StatementIfElse) IF LPAREN Condition:C1 RPAREN IfCond:I2 Statement:S3 ElseJmp:E4 Statement:S5 {: RESULT=new StatementIfElse(C1, I2, S3, E4, S5); RESULT.setLine(C1left); :}
 			|
 			(StatementIfElseRecover) IF LPAREN error RPAREN Statement:S1 ELSE Statement:S2 {: RESULT=new StatementIfElseRecover(S1, S2); RESULT.setLine(S1left); :}
 			| 
@@ -351,6 +355,8 @@ Statement ::= (StatementDesignator) DesignatorStatement:D1 SEMI {: RESULT=new St
 			|
 			(StatementRecovery)error SEMI {: RESULT=new StatementRecovery(); :}
 			;
+
+IfCond ::= (IfCond) {: RESULT=new IfCond(); :}/*epsilon*/;
 
 PrintExprEnd ::= (PrintExprEnd) {: RESULT=new PrintExprEnd(); :} /* epsilon */;
 
