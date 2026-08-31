@@ -29,6 +29,8 @@ nonterminal Type Type;
 nonterminal
 			ConstName ConstName;
 nonterminal ConstPart ConstPart;
+nonterminal ConstItem ConstItem;
+nonterminal ConstNameList ConstNameList;
 nonterminal NumConst numConst;
 nonterminal CharConst charConst;
 nonterminal BoolConst boolConst;
@@ -47,6 +49,7 @@ nonterminal
 			EnumDecl EnumDecl;
 nonterminal EnumConstList EnumConstList;
 nonterminal EnumConst EnumConst;
+nonterminal IdentName IdentName;
 
 nonterminal Statement Statement;
 nonterminal StatementList StatementList;
@@ -90,6 +93,12 @@ nonterminal
 nonterminal ForHeader ForHeader;
 nonterminal SwitchHeader SwitchHeader;
 nonterminal CopyMethods CopyMethods;
+nonterminal MapArrow MapArrow;
+nonterminal
+			TernaryCond TernaryCond;
+nonterminal TernaryElse TernaryElse;
+
+ 
 
 terminal LBRACE, RBRACE, PROG, ASSIGN, CONST, SEMI,
 		 COMMA, LBRACK, RBRACK,
@@ -98,6 +107,8 @@ terminal LBRACE, RBRACE, PROG, ASSIGN, CONST, SEMI,
 		 LT, GE, GT, PLUS, MINUS, MUL, DIV, MOD, NEW,
 		 AND, OR, QUESTION, COLON, IF, ELSE, SWITCH, 
 		 CASE, FOR, ENUM, CLASS, EXTENDS, ABSTRACT;
+
+terminal FINDANY, MAP, ARROW;
 
 terminal String IDENT;
 terminal Integer NUMBER, BOOL;
@@ -124,7 +135,16 @@ Decl ::= (DeclOfConst)ConstDecl:C1 {: RESULT=new DeclOfConst(C1); RESULT.setLine
 		|
 		(DeclOfAbstractClass)AbstractClassDecl:A1 {: RESULT=new DeclOfAbstractClass(A1); RESULT.setLine(A1left); :}
 		;
-ConstDecl ::= (ConstDecl)CONST Type:T1 ConstName:C2 ASSIGN ConstPart:C3 SEMI {: RESULT=new ConstDecl(T1, C2, C3); RESULT.setLine(T1left); :};
+
+
+ConstDecl ::= (ConstDecl) CONST Type:T1 ConstNameList:C2 SEMI {: RESULT=new ConstDecl(T1, C2); RESULT.setLine(T1left); :};
+
+ConstNameList ::= (ConstNameListNext) ConstNameList:C1 COMMA ConstItem:C2 {: RESULT=new ConstNameListNext(C1, C2); RESULT.setLine(C1left); :}
+				 |
+				 (ConstNameListEnd) ConstItem:C1 {: RESULT=new ConstNameListEnd(C1); RESULT.setLine(C1left); :}
+				 ;
+
+ConstItem ::= (ConstItem) ConstName:C1 ASSIGN ConstPart:C2 {: RESULT=new ConstItem(C1, C2); RESULT.setLine(C1left); :};
 
 ConstPart ::= (NumPart) numConst:n1 {: RESULT=new NumPart(n1); RESULT.setLine(n1left); :}
 			 | (CharPart)charConst:c1 {: RESULT=new CharPart(c1); RESULT.setLine(c1left); :}
@@ -272,8 +292,12 @@ ActPars ::= (ActParsNext) ActPars:A1 COMMA Expr:E2 {: RESULT=new ActParsNext(A1,
 
 Expr ::= (ExprAdd) AddExpr:A1 {: RESULT=new ExprAdd(A1); RESULT.setLine(A1left); :}
 	   |
-	   (ExprTernary) Condition:C1 QUESTION Expr:E2 COLON Expr:E3 {: RESULT=new ExprTernary(C1, E2, E3); RESULT.setLine(C1left); :}
+	   (ExprTernary) Condition:C1 TernaryCond:T2 QUESTION Expr:E3 TernaryElse:T4 COLON Expr:E5 {: RESULT=new ExprTernary(C1, T2, E3, T4, E5); RESULT.setLine(C1left); :}
 	   ;
+
+TernaryCond ::= (TernaryCond) {: RESULT=new TernaryCond(); :} /* epsilon */;
+
+TernaryElse ::= (TernaryElse) {: RESULT=new TernaryElse(); :} /* epsilon */;
 
 AddExpr ::= (AddExprTerm) Term:T1 {: RESULT=new AddExprTerm(T1); RESULT.setLine(T1left); :}
 		  |
@@ -345,6 +369,10 @@ Statement ::= (StatementDesignator) DesignatorStatement:D1 SEMI {: RESULT=new St
 			|
 			(StatementReturn) RETURN SEMI {: RESULT=new StatementReturn(); :}
 			|
+			(StatementFindAny) Designator:D1 Assignop:A2 Designator:D3 DOT FINDANY LPAREN Expr:E4 RPAREN SEMI {: RESULT=new StatementFindAny(D1, A2, D3, E4); RESULT.setLine(D1left); :}
+			|
+			(StatementMap) Designator:D1 Assignop:A2 Designator:D3 DOT MAP LPAREN IdentName:I4 MapArrow:M5 Expr:E6 RPAREN SEMI {: RESULT=new StatementMap(D1, A2, D3, I4, M5, E6); RESULT.setLine(D1left); :}
+			|
 			(StatementReturnExpr) RETURN Expr:E1 SEMI {: RESULT=new StatementReturnExpr(E1); RESULT.setLine(E1left); :}
 			|
 			(StatementSwitch) SwitchHeader:S1 CaseList:C2 RBRACE {: RESULT=new StatementSwitch(S1, C2); RESULT.setLine(S1left); :}
@@ -355,6 +383,10 @@ Statement ::= (StatementDesignator) DesignatorStatement:D1 SEMI {: RESULT=new St
 			|
 			(StatementRecovery)error SEMI {: RESULT=new StatementRecovery(); :}
 			;
+
+IdentName ::= (IdentName) IDENT:I1 {: RESULT=new IdentName(I1); RESULT.setLine(I1left); :};
+
+MapArrow ::= (MapArrow) ARROW {: RESULT=new MapArrow(); :};
 
 IfCond ::= (IfCond) {: RESULT=new IfCond(); :}/*epsilon*/;
 

@@ -20,10 +20,10 @@ parser code {:
     }
 :};
 nonterminal Program, ProgramName, DeclList, Decl, ConstDecl, VarDecl, Type,
-			ConstName, ConstPart, numConst, charConst, boolConst,
+			ConstName, ConstPart, ConstItem, ConstNameList, numConst, charConst, boolConst,
 			VarName, ArrayIdent, MethodDeclList, MethodDecl, MethodVarList,
 			MethodName, MethodType, FormPars, ParameterName,
-			EnumDecl, EnumConstList, EnumConst;
+			EnumDecl, EnumConstList, EnumConst, IdentName;
 
 nonterminal Statement, StatementList, DesignatorStatement, Designator,
 			ActPars, Expr, AddExpr, Term, Factor,
@@ -32,7 +32,10 @@ nonterminal Statement, StatementList, DesignatorStatement, Designator,
 			OptDesignatorStatement, OptCondition, PrintExprEnd,
 			VarDeclClassList, ClassDecl, ClassName, ExtendsType,
 			AbstractClassDecl, AbstractMethodDeclList, AbstractMethodDeclItem,
-			AbstractMethodDecl, ForHeader, SwitchHeader, CopyMethods;
+			AbstractMethodDecl, ForHeader, SwitchHeader, CopyMethods, MapArrow,
+			TernaryCond, TernaryElse;
+
+ 
 
 terminal LBRACE, RBRACE, PROG, ASSIGN, CONST, SEMI,
 		 COMMA, LBRACK, RBRACK,
@@ -41,6 +44,8 @@ terminal LBRACE, RBRACE, PROG, ASSIGN, CONST, SEMI,
 		 LT, GE, GT, PLUS, MINUS, MUL, DIV, MOD, NEW,
 		 AND, OR, QUESTION, COLON, IF, ELSE, SWITCH, 
 		 CASE, FOR, ENUM, CLASS, EXTENDS, ABSTRACT;
+
+terminal FINDANY, MAP, ARROW;
 
 terminal String IDENT;
 terminal Integer NUMBER, BOOL;
@@ -67,7 +72,16 @@ Decl ::= (DeclOfConst)ConstDecl
 		|
 		(DeclOfAbstractClass)AbstractClassDecl
 		;
-ConstDecl ::= (ConstDecl)CONST Type ConstName ASSIGN ConstPart SEMI;
+
+
+ConstDecl ::= (ConstDecl) CONST Type ConstNameList SEMI;
+
+ConstNameList ::= (ConstNameListNext) ConstNameList COMMA ConstItem
+				 |
+				 (ConstNameListEnd) ConstItem
+				 ;
+
+ConstItem ::= (ConstItem) ConstName ASSIGN ConstPart;
 
 ConstPart ::= (NumPart) numConst
 			 | (CharPart)charConst
@@ -215,8 +229,12 @@ ActPars ::= (ActParsNext) ActPars COMMA Expr
 
 Expr ::= (ExprAdd) AddExpr
 	   |
-	   (ExprTernary) Condition QUESTION Expr COLON Expr
+	   (ExprTernary) Condition TernaryCond QUESTION Expr TernaryElse COLON Expr
 	   ;
+
+TernaryCond ::= (TernaryCond) /* epsilon */;
+
+TernaryElse ::= (TernaryElse) /* epsilon */;
 
 AddExpr ::= (AddExprTerm) Term
 		  |
@@ -288,6 +306,10 @@ Statement ::= (StatementDesignator) DesignatorStatement SEMI
 			|
 			(StatementReturn) RETURN SEMI
 			|
+			(StatementFindAny) Designator Assignop Designator DOT FINDANY LPAREN Expr RPAREN SEMI
+			|
+			(StatementMap) Designator Assignop Designator DOT MAP LPAREN IdentName MapArrow Expr RPAREN SEMI
+			|
 			(StatementReturnExpr) RETURN Expr SEMI
 			|
 			(StatementSwitch) SwitchHeader CaseList RBRACE
@@ -298,6 +320,10 @@ Statement ::= (StatementDesignator) DesignatorStatement SEMI
 			|
 			(StatementRecovery)error SEMI
 			;
+
+IdentName ::= (IdentName) IDENT;
+
+MapArrow ::= (MapArrow) ARROW;
 
 IfCond ::= (IfCond)/*epsilon*/;
 

@@ -62,6 +62,9 @@ import java_cup.runtime.Symbol;
 "continue"  { return new_symbol(sym.CONTINUE); }
 "for"       { return new_symbol(sym.FOR); }
 "length"    { return new_symbol(sym.LENGTH); }
+"findAny" | "findany" 	{ return new_symbol(sym.FINDANY); }
+"map"     	{ return new_symbol(sym.MAP); }
+"=>"      	{ return new_symbol(sym.ARROW); }
 "switch"    { return new_symbol(sym.SWITCH); }
 "case"      { return new_symbol(sym.CASE); }
 

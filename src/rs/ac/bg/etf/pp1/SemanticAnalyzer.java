@@ -102,6 +102,7 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 	    }
 	}
 	
+	
 	//pomocna funkcija za proveru parametra funkcije
 	
 	private boolean assignCompatible(Struct src, Struct dst) {
@@ -115,6 +116,11 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 	        }
 	    }
 	    return false;
+	}
+	
+	private boolean hasThis(Obj method) {
+	    var it = method.getLocalSymbols().iterator();
+	    return it.hasNext() && it.next().getName().equals("this");
 	}
 	
 	private void checkArgs(Obj method, List<Struct> argTypes) throws Exception {
@@ -135,12 +141,11 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 	        i++;
 	    }
 	}
-	private boolean array$part = false;
+	
 	//ispis greske
 	public boolean errorDetected = false;
 	public int errorCount = 0;
 	private boolean is$void;
-	private boolean meth$defined = false;
 
 	private void report_error(String message, SyntaxNode info) {
 		errorDetected = true;
@@ -223,32 +228,23 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 	}
 	
 	@Override
-	public void visit(ConstDecl ConstDecl) {
-		if (current$type.equals("bool") || current$type.equals("char") ||
-				current$type.equals("int")) {
-			var type$pointer = Tab.find(current$type);
-			var struct = Tab.insert(Obj.Con, current$name, type$pointer.getType());
-			struct.setLevel(1);
-			if(current$type.equals("char")) {
-				try {
-					struct.setAdr((char)current$value);					
-				}catch (Exception e) {
-					report_error("Nepoklapanje tipa i vrednosti", ConstDecl);
-					
-				}
-			}
-			else {
-				try {	
-					struct.setAdr((int)current$value);
-				}catch (Exception e) {
-					report_error("Nepoklapanje tipa i vrednosti", ConstDecl);
-				}
-			}
-		}
-		else {
-			report_error("Neodgovarajuci tip podatka za konstantu",ConstDecl);
-		}
+	public void visit(ConstItem ConstItem) {
+	    if (current$type.equals("bool") || current$type.equals("char") || current$type.equals("int")) {
+	        var type$pointer = Tab.find(current$type);
+	        var struct = Tab.insert(Obj.Con, current$name, type$pointer.getType());
+	        struct.setLevel(1);
+	        if (current$type.equals("char")) {
+	            try { struct.setAdr((char) current$value); }
+	            catch (Exception e) { report_error("Nepoklapanje tipa i vrednosti", ConstItem); }
+	        } else {
+	            try { struct.setAdr((int) current$value); }
+	            catch (Exception e) { report_error("Nepoklapanje tipa i vrednosti", ConstItem); }
+	        }
+	    } else {
+	        report_error("Neodgovarajuci tip podatka za konstantu", ConstItem);
+	    }
 	}
+	
 	@Override
 	public void visit(VarNameEnd VarNameEnd) {
 		current$name = VarNameEnd.getI1();
@@ -400,6 +396,7 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 	public void visit(MethodDecl MethodDecl) {
 		Tab.chainLocalSymbols(obj$holder);
 		Tab.closeScope();	
+		 part$of$class = hasThis(obj$holder);
 		if(already$declared) {
 			if(obj$holder.getLevel() != decObj.getLevel()) {
 				System.out.println(obj$holder.getLevel() + " " +decObj.getLevel() );
@@ -439,6 +436,8 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 	public void visit(MethodDeclVars MethodDeclVars) {
 		visit((MethodDecl)MethodDeclVars);
 	}
+	
+	
 	@Override
 	public void visit(MethodName MethodName) {
 		current$name = MethodName.getI1();
@@ -485,6 +484,7 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 			}
 		}
 		resolved$obj.put(MethodName, obj$holder); 
+		part$of$class = false;
 	}
 	@Override
 	public void visit(MethodVoid MethodVoid) {
@@ -547,6 +547,7 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 	public void visit(AbstractMethodDecl AbstractMethodDecl) {
 		Tab.chainLocalSymbols(obj$holder);
 		Tab.closeScope();
+		part$of$class = hasThis(obj$holder);
 		abstractMethods.add(obj$holder);
 		obj$holder = null;
 	}
@@ -682,7 +683,7 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 			current$name = factorNewArray.getType().getI1();
 			var type = Tab.find(current$name).getType();
 			int kind = type.getKind();
-			if (kind != Struct.Int && kind != Struct.Char && kind != Struct.Enum) {
+			if (kind != Struct.Int && kind != Struct.Char && kind != Struct.Enum && kind != Struct.Class) {
 			    report_error("niz mora biti tipa int, char, bool ili nabrajanje", factorNewArray);
 			} else {
 			    expr$type = new Struct(Struct.Array);
@@ -781,6 +782,30 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 	    }
 	    designator$stack.push(new Obj(Obj.Elem, base.getName(), base.getType().getElemType()));
 	}
+	
+
+	@Override
+	public void visit(StatementFindAny StatementFindAny) {
+	    Obj rhsArray = designator$stack.pop();
+
+	    if (!assing$type.equals(boolType)) {
+	        report_error("leva strana findAny mora biti tipa bool", StatementFindAny);
+	    }
+	    if (rhsArray.getType().getKind() != Struct.Array) {
+	        report_error("desna strana findAny mora biti niz", StatementFindAny);
+	    } else {
+	        Struct elemType = rhsArray.getType().getElemType();
+	        int k = elemType.getKind();
+	        if (k != Struct.Int && k != Struct.Char) {
+	            report_error("findAny radi samo nad nizovima ugradjenog tipa", StatementFindAny);
+	        }
+	        if (!expr$type.equals(elemType)) {
+	            report_error("izraz u findAny mora biti istog tipa kao elementi niza", StatementFindAny);
+	        }
+	    }
+
+	}
+	
 	@Override
 	public void visit(Assignop Assignop) {
 	    Obj target = designator$stack.pop();
@@ -788,7 +813,7 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 	    if (kind != Obj.Var && kind != Obj.Fld && kind != Obj.Elem) {
 	        report_error(target.getName() + " ne moze biti meta dodele", Assignop);
 	    }
-	  
+
 	    assing$type = target.getType();
 	    designator$stack.clear();
 	}
@@ -1011,4 +1036,47 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 	    }
 	    expr$type = boolType;
 	}
+	
+	//.MAP
+	private String lambda$name;
+	
+	@Override
+	public void visit(IdentName IdentName) {
+	    lambda$name = IdentName.getI1();
+	}
+
+	@Override
+	public void visit(MapArrow MapArrow) {
+	    Obj arr = designator$stack.pop();
+
+	    if (arr.getType().getKind() != Struct.Array) {
+	        report_error("desna strana map mora biti niz", MapArrow);
+	        resolved$obj.put(MapArrow, Tab.noObj);
+	        return;
+	    }
+	    Struct elemType = arr.getType().getElemType();
+
+	    Obj ident = Tab.find(lambda$name);
+	    if (ident.equals(Tab.noObj)) {
+	        report_error(lambda$name + " nije definisana", MapArrow);
+	    } else if (ident.getKind() != Obj.Var && ident.getKind() != Obj.Fld) {
+	        report_error(lambda$name + " mora biti promenljiva", MapArrow);
+	    } else if (!ident.getType().equals(elemType)) {
+	        report_error(lambda$name + " mora biti istog tipa kao elementi niza", MapArrow);
+	    }
+
+	    resolved$obj.put(MapArrow, ident);   // ista mapa koju vec koristis - novi kljuc
+	}
+
+	@Override
+	public void visit(StatementMap StatementMap) {
+	    if (assing$type.getKind() != Struct.Array) {
+	        report_error("leva strana map mora biti niz", StatementMap);
+	        return;
+	    }
+	    if (!expr$type.equals(assing$type.getElemType())) {
+	        report_error("izraz u map mora biti istog tipa kao elementi rezultujuceg niza", StatementMap);
+	    }
+	}
+	
 }
