@@ -1,0 +1,21 @@
+
+
+objektni cvorovi:
+
+kind -> koja je struktura type/naci u Obj.
+name
+type -> naci objektni cvor kom tipu pripada / kod klasa pokazuje
+			na objektni cvor class  koji sadrzi svoje fieldove, 
+			svaka instanca te klase ce kao svoj tip imati bas taj objekat
+			objektnog cvora
+			
+next -> ne diramo 
+adr -> kod konstanti koristimo za smestanje vrednosti
+level -> za program 0 iako nije bitno ali da bih lakse 
+		projektovao u glavi gde ostale stvari treba da idu,
+		ove tri metode su kao inline u svaki program zato stoji 1
+		za njih  
+locals 
+
+
+strukturni cvorovi:

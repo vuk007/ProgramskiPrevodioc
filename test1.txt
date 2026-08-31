@@ -1,0 +1,78 @@
+program p
+
+enum Broj {NULA,JEDAN,TRI = 3, PET = 5}
+abstract class B {
+	int aB, bB,cB;
+	{
+		abstract void add(int l); 
+		int returnA(){return 1;}
+		
+	}
+} 
+
+class C {
+	int cint;
+	bool cbool;
+	int arrej[];
+}
+
+Class A extends B  {
+	int a , b , pos , neg;
+	bool d;  C c;
+	{
+		void add (int laa) {}
+		void return_fields () {
+			return_fields();
+		}
+	}
+}
+A neki; 
+const int pi = 3;
+const bool pitrue = false;
+const char pichar = '3';
+int rows[], columns[] ,a;  
+{
+	void as(){
+		a = 45;
+		return true; 
+	}
+	int f (char c , int x, int i){return x*i;} 
+	void main()
+	int b[],i ,semafor[]; int arr[];
+	A val; int tableSize , x; char c;
+	{
+		
+		//rows[2] = 1 == 1;
+		if(a==5){
+			x = 5;
+		}else{}
+		x = val.aB+x+(tableSize+x)*tableSize;
+		for (i = 0; i < arr[3]; i++)arr[i] = i;
+		switch (arr[i] - 1) {
+            case 0: break;
+            case 1: print('1'); break;
+            case 2: print('2'); break;
+            print(arr[i]);
+		 }
+		read(x);
+		for(i = 0; i < tableSize; i++) {
+
+		}
+		f(c,val.c.cint, val.c.cint);
+		as();
+		read(arr[0]);
+		for(x=rows.length;;){
+            if(x <= 0) break;
+            if (Broj.NULA <= x && x < tableSize){
+
+		    }
+		    else if (-tableSize < x && x < 0){
+
+		    }
+		    read(x);
+		}
+		print(x < 0 ? '-' : '+');
+		//val.add(i);
+		val.c.arrej[0] =  x * val.a * x ;
+	}
+}

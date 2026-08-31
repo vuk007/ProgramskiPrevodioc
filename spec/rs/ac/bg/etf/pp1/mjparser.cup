@@ -1,0 +1,333 @@
+package rs.ac.bg.etf.pp1;
+import java_cup.runtime.*;
+import rs.ac.bg.etf.pp1.ast.*;
+
+parser code {:
+    public void syntax_error(Symbol cur_token) {
+        report_error("Sintaksna greska", cur_token);
+    }
+
+    public void unrecovered_syntax_error(Symbol cur_token) {
+        report_error("Sintaksna greska (neuspesan oporavak)", cur_token);
+    }
+
+    private void report_error(String message, Symbol info) {
+        StringBuilder msg = new StringBuilder(message);
+        if (info != null) {
+            msg.append(" na liniji ").append(info.left);
+        }
+        System.err.println(msg.toString());
+    }
+:};
+nonterminal Program, ProgramName, DeclList, Decl, ConstDecl, VarDecl, Type,
+			ConstName, ConstPart, numConst, charConst, boolConst,
+			VarName, ArrayIdent, MethodDeclList, MethodDecl, MethodVarList,
+			MethodName, MethodType, FormPars, ParameterName,
+			EnumDecl, EnumConstList, EnumConst;
+
+nonterminal Statement, StatementList, DesignatorStatement, Designator,
+			ActPars, Expr, AddExpr, Term, Factor,
+			Condition, CondTerm, CondFact, Assignop, Relop,
+			Addop, Mulop, CaseList, CaseStmt, ElseJmp, 
+			OptDesignatorStatement, OptCondition, PrintExprEnd,
+			VarDeclClassList, ClassDecl, ClassName, ExtendsType,
+			AbstractClassDecl, AbstractMethodDeclList, AbstractMethodDeclItem,
+			AbstractMethodDecl, ForHeader, SwitchHeader, CopyMethods;
+
+terminal LBRACE, RBRACE, PROG, ASSIGN, CONST, SEMI,
+		 COMMA, LBRACK, RBRACK,
+		 VOID, LPAREN, RPAREN, INC, DEC, DOT, LENGTH,
+		 BREAK, READ, RETURN, PRINT, CONTINUE, EQ, NEQ, LE, 
+		 LT, GE, GT, PLUS, MINUS, MUL, DIV, MOD, NEW,
+		 AND, OR, QUESTION, COLON, IF, ELSE, SWITCH, 
+		 CASE, FOR, ENUM, CLASS, EXTENDS, ABSTRACT;
+
+terminal String IDENT;
+terminal Integer NUMBER, BOOL;
+terminal Character CHARACTER;
+
+precedence left ELSE;
+
+Program ::=	(ProgramMethods)PROG ProgramName DeclList LBRACE MethodDeclList RBRACE
+			|
+			(ProgramNoDeclList)PROG ProgramName LBRACE MethodDeclList RBRACE
+			;
+
+ProgramName ::= (ProgramName)IDENT;
+
+DeclList ::= (DeclListNext)DeclList Decl | (DeclListEnd)Decl;
+
+Decl ::= (DeclOfConst)ConstDecl
+		|
+		(DeclOfVar)VarDecl
+		|
+		(DeclOfEnum)EnumDecl
+		|
+		(DeclOfClass)ClassDecl
+		|
+		(DeclOfAbstractClass)AbstractClassDecl
+		;
+ConstDecl ::= (ConstDecl)CONST Type ConstName ASSIGN ConstPart SEMI;
+
+ConstPart ::= (NumPart) numConst
+			 | (CharPart)charConst
+			 | (BoolPart)boolConst;
+
+numConst ::= (NumVal)NUMBER;
+boolConst ::= (BoolVal)BOOL;
+charConst ::= (CharVal)CHARACTER;
+
+Type ::= (Type)IDENT;
+ConstName::= (ConstName)IDENT;
+
+VarDecl ::= (VarDeclGood)Type VarName SEMI
+			| (VarDeclRecover) error SEMI;
+
+VarName ::= (VarNameNext) VarName COMMA IDENT ArrayIdent
+			|
+			(VarNameEnd)IDENT ArrayIdent
+			|
+			(VarNameErrorContinue) VarName COMMA error
+			|
+			(VarNameErrorFirst) error
+			;
+
+ArrayIdent ::= (Array)LBRACK RBRACK | (NotArray)/*epsilon*/;
+
+EnumDecl ::= (EnumDecl) ENUM IDENT LBRACE EnumConstList RBRACE;
+
+EnumConstList ::= (EnumConstListNext) EnumConstList COMMA EnumConst
+				 |
+				 (EnumConstListEnd) EnumConst
+				 ;
+
+EnumConst ::= (EnumConstNoVal) IDENT
+			|
+			(EnumConstVal) IDENT ASSIGN numConst
+			;
+
+ClassDecl ::= (ClassDeclEmpty)CLASS ClassName ExtendsType LBRACE CopyMethods RBRACE
+			|
+			(ClassDeclNoVars)CLASS ClassName ExtendsType LBRACE LBRACE CopyMethods MethodDeclList RBRACE RBRACE
+			|
+			(ClassDeclNoMeth)CLASS ClassName ExtendsType LBRACE VarDeclClassList CopyMethods RBRACE
+			|
+			(ClassDeclVarMeth)CLASS ClassName ExtendsType LBRACE VarDeclClassList LBRACE CopyMethods MethodDeclList RBRACE RBRACE;
+
+ClassName ::= (ClassName)IDENT; 
+
+ExtendsType ::= (ExtendsToType)EXTENDS Type
+				|
+				(ExtendsRecover) EXTENDS error
+				|
+				(ExtendsRecover2) error
+				|
+				(NotExtended)/*epsilon*/; 
+
+CopyMethods ::= (CopyMethods)/*epsilon*/;
+
+AbstractClassDecl ::= (AbstractClassDeclEmpty)ABSTRACT CLASS ClassName ExtendsType LBRACE CopyMethods RBRACE
+					 |
+					 (AbstractClassDeclNoVars)ABSTRACT CLASS ClassName ExtendsType LBRACE LBRACE CopyMethods AbstractMethodDeclList RBRACE RBRACE
+					 |
+					 (AbstractClassDeclNoMeth)ABSTRACT CLASS ClassName ExtendsType LBRACE VarDeclClassList CopyMethods RBRACE
+					 |
+					 (AbstractClassDeclVarMeth)ABSTRACT CLASS ClassName ExtendsType LBRACE VarDeclClassList LBRACE CopyMethods AbstractMethodDeclList RBRACE RBRACE;
+
+AbstractMethodDeclList ::= (AbstractMethodDeclListNext) AbstractMethodDeclList AbstractMethodDeclItem
+						  |
+						  (AbstractMethodDeclListEnd) AbstractMethodDeclItem
+						  ;
+
+AbstractMethodDeclItem ::= (AbstractMethodDeclItemConcrete) MethodDecl
+						  |
+						  (AbstractMethodDeclItemAbstract) AbstractMethodDecl SEMI
+						  ;
+
+AbstractMethodDecl ::= (AbstractMethodDeclVars) ABSTRACT MethodType MethodName LPAREN FormPars RPAREN
+					  |
+					  (AbstractMethodDeclNoPars) ABSTRACT MethodType MethodName LPAREN RPAREN
+					  ;
+
+VarDeclClassList ::= (VarDeclClassListNext)VarDeclClassList VarDecl
+					|
+					(VarDeclClassListEnd)VarDecl
+					|
+					(VarDeclClassListErrorFirst) error
+					;
+
+MethodDeclList ::= (MethodDeclListNext) MethodDeclList MethodDecl
+					|
+					(MethodDeclListEnd) MethodDecl;
+
+MethodDecl ::=(MethodDeclVars)MethodType MethodName LPAREN FormPars RPAREN MethodVarList LBRACE StatementList RBRACE
+			|
+			(MethodDeclNoVars)MethodType MethodName LPAREN FormPars RPAREN LBRACE StatementList RBRACE
+			|
+			(MethodDeclNoParameter)MethodType MethodName LPAREN RPAREN MethodVarList LBRACE StatementList RBRACE
+			|
+			(MethodDeclNoVarsNoParameter)MethodType MethodName LPAREN RPAREN LBRACE StatementList RBRACE;
+
+MethodType ::= (MethodVoid)VOID
+				|
+				(MethodOtherType)Type;
+
+MethodVarList ::= (MethodVarListNext)MethodVarList VarDecl
+				|
+				(MethodVarListEnd)VarDecl;
+
+MethodName ::= (MethodName)IDENT;
+
+FormPars ::= (FormParsNext) FormPars COMMA Type ParameterName
+			|
+			(FormParsEnd)Type ParameterName
+			|
+			(FormParsNextRecover) FormPars COMMA error
+			|
+			(FormParsRecovery)error;
+
+ParameterName ::= (ParameterName) IDENT ArrayIdent;
+
+Designator ::= (DesignatorIdent) IDENT
+			 |
+			 (DesignatorField) Designator DOT IDENT
+			 |
+			 (DesignatorLength) Designator DOT LENGTH
+			 |
+			 (DesignatorArrayElem) Designator LBRACK Expr RBRACK
+			 ;
+
+DesignatorStatement ::= (DesignatorAssign) Designator Assignop Expr
+					   |
+					   (DesignatorInc) Designator INC
+					   |
+					   (DesignatorDec) Designator DEC
+					   |
+					   (DesignatorCallPars) Designator LPAREN ActPars RPAREN
+					   |
+					   (DesignatorCallNoPars) Designator LPAREN RPAREN
+					   ;
+
+ActPars ::= (ActParsNext) ActPars COMMA Expr
+		  |
+		  (ActParsEnd) Expr
+		  ;
+
+Expr ::= (ExprAdd) AddExpr
+	   |
+	   (ExprTernary) Condition QUESTION Expr COLON Expr
+	   ;
+
+AddExpr ::= (AddExprTerm) Term
+		  |
+		  (AddExprNeg) MINUS Term
+		  |
+		  (AddExprAdd) AddExpr Addop Term
+		  ;
+
+Term ::= (TermFactor) Factor
+	   |
+	   (TermMul) Term Mulop Factor
+	   ;
+
+Factor ::= (FactorNum) numConst
+		 |
+		 (FactorChar) charConst
+		 |
+		 (FactorBool) boolConst
+		 |
+		 (FactorParen) LPAREN Expr RPAREN
+		 |
+		 (FactorNewArray) NEW Type LBRACK Expr RBRACK
+		 |
+		 (FactorNewObj) NEW Type
+		 |
+		 (FactorDesignator) Designator
+		 |
+		 (FactorCallPars) Designator LPAREN ActPars RPAREN
+		 |
+		 (FactorCallNoPars) Designator LPAREN RPAREN
+		 ;
+
+Condition ::= (ConditionOr) Condition OR CondTerm
+			|
+			(ConditionTerm) CondTerm
+			;
+
+CondTerm ::= (CondTermAnd) CondTerm AND CondFact
+		   |
+		   (CondTermFact) CondFact
+		   ;
+
+CondFact ::= (CondFactRel) AddExpr Relop AddExpr
+		   |
+		   (CondFactExpr) AddExpr
+		   ;
+
+Statement ::= (StatementDesignator) DesignatorStatement SEMI
+			|
+			(StatementRead) READ LPAREN Designator RPAREN SEMI
+			|
+			(StatementPrint) PRINT LPAREN Expr RPAREN SEMI
+			|
+			(StatementPrintWidth) PRINT LPAREN  Expr PrintExprEnd COMMA numConst RPAREN SEMI
+			|
+			(StatementIf) IF LPAREN Condition RPAREN Statement
+			|
+			(StatementIfElse) IF LPAREN Condition RPAREN Statement ElseJmp Statement
+			|
+			(StatementIfElseRecover) IF LPAREN error RPAREN Statement ELSE Statement
+			| 
+			(StatementIfRecover) IF LPAREN error RPAREN Statement
+			|
+			(StatementBreak) BREAK SEMI
+			|
+			(StatementContinue) CONTINUE SEMI
+			|
+			(StatementReturn) RETURN SEMI
+			|
+			(StatementReturnExpr) RETURN Expr SEMI
+			|
+			(StatementSwitch) SwitchHeader CaseList RBRACE
+			|
+			(StatementFor) ForHeader Statement
+			|
+			(StatementBlock) LBRACE StatementList RBRACE
+			|
+			(StatementRecovery)error SEMI
+			;
+
+PrintExprEnd ::= (PrintExprEnd) /* epsilon */;
+
+ElseJmp ::= (ElseJmp)ELSE;
+
+ForHeader ::= (ForHeader) FOR LPAREN OptDesignatorStatement SEMI OptCondition SEMI OptDesignatorStatement RPAREN;
+
+SwitchHeader ::= (SwitchHeader) SWITCH LPAREN Expr RPAREN LBRACE;
+
+StatementList ::= (StatementListNext) StatementList Statement
+				|
+				(StatementListEmpty) /* epsilon */
+				;
+
+CaseList ::= (CaseListNext) CaseList CaseStmt
+		   |
+		   (CaseListEmpty) /* epsilon */
+		   ;
+
+CaseStmt ::= (CaseStmt) CASE numConst COLON StatementList;
+
+OptDesignatorStatement ::= (OptDesignatorStatementSome) DesignatorStatement
+						  |
+						  (OptDesignatorStatementNone) /* epsilon */
+						  ;
+
+OptCondition ::= (OptConditionSome) Condition
+			   |
+			   (OptConditionNone) /* epsilon */
+			   ;
+
+Assignop ::= (Assignop)ASSIGN;
+Relop ::= (RelopEQ)EQ|(RelopNEQ)NEQ|(RelopLE)LE|(RelopLT)LT|(RelopGT)GT|(RelopGE)GE;
+Addop ::= (AddopADD)PLUS | (AddopMIN)MINUS;
+Mulop ::= (MulopMUL)MUL | (MulopDIV)DIV | (MulopMOD)MOD;
