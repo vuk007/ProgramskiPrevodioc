@@ -97,16 +97,19 @@ nonterminal MapArrow MapArrow;
 nonterminal
 			TernaryCond TernaryCond;
 nonterminal TernaryElse TernaryElse;
+nonterminal AfterFirst AfterFirst;
+nonterminal AfterSecond AfterSecond;
+nonterminal DoStart DoStart;
 
  
 
 terminal LBRACE, RBRACE, PROG, ASSIGN, CONST, SEMI,
-		 COMMA, LBRACK, RBRACK,
+		 COMMA, LBRACK, RBRACK, WHILE, DO,
 		 VOID, LPAREN, RPAREN, INC, DEC, DOT, LENGTH,
 		 BREAK, READ, RETURN, PRINT, CONTINUE, EQ, NEQ, LE, 
 		 LT, GE, GT, PLUS, MINUS, MUL, DIV, MOD, NEW,
 		 AND, OR, QUESTION, COLON, IF, ELSE, SWITCH, 
-		 CASE, FOR, ENUM, CLASS, EXTENDS, ABSTRACT;
+		 CASE, FOR, ENUM, CLASS, EXTENDS, ABSTRACT, SWAP;
 
 terminal FINDANY, MAP, ARROW;
 
@@ -367,6 +370,8 @@ Statement ::= (StatementDesignator) DesignatorStatement:D1 SEMI {: RESULT=new St
 			|
 			(StatementContinue) CONTINUE SEMI {: RESULT=new StatementContinue(); :}
 			|
+			(StatementSwap)SWAP LPAREN Designator:D1 AfterFirst:A2 COMMA Designator:D3 AfterSecond:A4 RPAREN SEMI {: RESULT=new StatementSwap(D1, A2, D3, A4); RESULT.setLine(D1left); :}
+			|
 			(StatementReturn) RETURN SEMI {: RESULT=new StatementReturn(); :}
 			|
 			(StatementFindAny) Designator:D1 Assignop:A2 Designator:D3 DOT FINDANY LPAREN Expr:E4 RPAREN SEMI {: RESULT=new StatementFindAny(D1, A2, D3, E4); RESULT.setLine(D1left); :}
@@ -381,8 +386,16 @@ Statement ::= (StatementDesignator) DesignatorStatement:D1 SEMI {: RESULT=new St
 			|
 			(StatementBlock) LBRACE StatementList:S1 RBRACE {: RESULT=new StatementBlock(S1); RESULT.setLine(S1left); :}
 			|
+			(StatementDoWhile)DoStart:D1 Statement:S2  WHILE LPAREN Condition:C3 RPAREN SEMI {: RESULT=new StatementDoWhile(D1, S2, C3); RESULT.setLine(D1left); :}
+			|
 			(StatementRecovery)error SEMI {: RESULT=new StatementRecovery(); :}
 			;
+
+DoStart ::= (DoStart)DO {: RESULT=new DoStart(); :};
+
+AfterSecond ::= (AfterSecond) {: RESULT=new AfterSecond(); :}/*epsilon*/;
+
+AfterFirst ::= (AfterFirst) {: RESULT=new AfterFirst(); :}/*epsilon*/;
 
 IdentName ::= (IdentName) IDENT:I1 {: RESULT=new IdentName(I1); RESULT.setLine(I1left); :};
 

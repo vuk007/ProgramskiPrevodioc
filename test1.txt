@@ -1,0 +1,24 @@
+program p
+
+class A {
+	int a;
+}
+A klasaA;
+A klasaA2;
+int i , x[];
+{
+	void main()int z ; bool a; {
+		i = 0;
+		do
+		{
+			i = i + 1;
+			print(i);
+			for(z = 0 ; z <10; z++){
+				if (z == 2 || i == 3)break;
+				print('t');
+			}
+			if(i == 2)continue;
+			if(i == 2)break;
+		}while(i<5);
+	}
+}

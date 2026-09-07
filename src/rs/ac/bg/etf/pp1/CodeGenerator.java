@@ -34,6 +34,8 @@ public class CodeGenerator extends VisitorAdaptor{
 	private ArrayDeque<List<Integer>> true$list$stack = new ArrayDeque<>();
 	
 	private Obj vtable$temp$obj;
+	private Obj temp1;
+	private Obj temp2;
 	//aritmeticki stekovi 
 	
 	private ArrayDeque<arith> add$op$stack = new ArrayDeque<>();
@@ -87,7 +89,7 @@ public class CodeGenerator extends VisitorAdaptor{
 	@Override
 	public void visit(ProgramName ProgramName) {
 	    program$obj = obj$pointers.get(ProgramName);
-	    for (var obj : program$obj.getLocalSymbols()) {
+	    for (Obj obj : program$obj.getLocalSymbols()) {
 	        if (obj.getKind() == Obj.Var) {
 	            obj.setAdr(code.dataSize);
 	            code.dataSize++;
@@ -100,6 +102,14 @@ public class CodeGenerator extends VisitorAdaptor{
 	    vtable$temp$obj = new Obj(Obj.Var, "$vtableTemp", Tab.intType);
 	    vtable$temp$obj.setLevel(0);
 	    vtable$temp$obj.setAdr(code.dataSize++);
+	    
+	    temp1 = new Obj(Obj.Var, "$temp2", Tab.intType);
+	    temp1.setLevel(0);
+	    temp1.setAdr(code.dataSize++);
+	    
+	    temp2 = new Obj(Obj.Var, "$temp2", Tab.intType);
+	    temp2.setLevel(0);
+	    temp2.setAdr(code.dataSize++);
 	}
 	
 	@Override
@@ -660,6 +670,7 @@ public class CodeGenerator extends VisitorAdaptor{
 	    break$stack.peek().add(Code.pc + 1);  
 	    Code.putJump(0);                        
 	}
+	
 
 	@Override
 	public void visit(StatementContinue StatementContinue) {
@@ -698,7 +709,7 @@ public class CodeGenerator extends VisitorAdaptor{
 	
 	@Override
 	public void visit(FactorNewObj FactorNewObj) {
-		var struct = type$pointers.get(FactorNewObj);
+		Struct struct = type$pointers.get(FactorNewObj);
 		code.put(code.new_);
 		code.put2((struct.getNumberOfFields()+1) * 4);
 		// *4 jer svako polje je 32b 
@@ -872,6 +883,66 @@ public class CodeGenerator extends VisitorAdaptor{
 
 	    Code.fixup(pendingMapExitPatch);
 	}
-
+	
+	@Override
+	public void visit(AfterFirst AfterFirst) {
+		if(designator$stack.peek().getKind() == Obj.Fld)
+		{
+			code.put(code.dup);
+			code.load(designator$stack.peek());
+			code.store(temp1);
+		}else if(designator$stack.peek().getKind() == Obj.Elem) {
+			code.put(code.dup2);
+			code.load(designator$stack.peek());
+			code.store(temp1);
+		}
+		else {
+			code.load(designator$stack.peek());
+			code.store(temp1);
+		}
+	}
+	@Override
+	public void visit(AfterSecond AfterSecond) {
+		if(designator$stack.peek().getKind() == Obj.Fld )
+		{
+			code.put(code.dup);
+			code.load(designator$stack.peek());
+			code.store(temp2);
+		}else if(designator$stack.peek().getKind() == Obj.Elem) {
+			code.put(code.dup2);
+			code.load(designator$stack.peek());
+			code.store(temp2);
+		}
+		else {
+			code.load(designator$stack.peek());
+			code.store(temp2);
+		}
+	}
+	@Override
+	public void visit(StatementSwap StatementSwap) {
+		Obj second = designator$stack.pop();
+		Obj first = designator$stack.pop();
+		code.load(temp1);
+		code.store(second);
+		code.load(temp2);
+		code.store(first);
+	}
+	@Override
+	public void visit(StatementDoWhile StatementDoWhile) {
+		int start =for$cond$start.pop();
+		List<Integer> a = break$stack.pop();
+		List<Integer> arr = false$list$stack.pop();
+		code.putJump(start);
+		for(int adr : arr)code.fixup(adr);
+		for(int adr : a)code.fixup(adr);
+		true$list$stack.pop();
+		continue$target$stack.pop();
+	}
+	@Override
+	public void visit(DoStart DoStart) {
+		for$cond$start.push(code.pc);
+		continue$target$stack.push(code.pc);
+		break$stack.push(new ArrayList<>());
+	}
 }
 

@@ -33,17 +33,17 @@ nonterminal Statement, StatementList, DesignatorStatement, Designator,
 			VarDeclClassList, ClassDecl, ClassName, ExtendsType,
 			AbstractClassDecl, AbstractMethodDeclList, AbstractMethodDeclItem,
 			AbstractMethodDecl, ForHeader, SwitchHeader, CopyMethods, MapArrow,
-			TernaryCond, TernaryElse;
+			TernaryCond, TernaryElse, AfterFirst, AfterSecond, DoStart;
 
  
 
 terminal LBRACE, RBRACE, PROG, ASSIGN, CONST, SEMI,
-		 COMMA, LBRACK, RBRACK,
+		 COMMA, LBRACK, RBRACK, WHILE, DO,
 		 VOID, LPAREN, RPAREN, INC, DEC, DOT, LENGTH,
 		 BREAK, READ, RETURN, PRINT, CONTINUE, EQ, NEQ, LE, 
 		 LT, GE, GT, PLUS, MINUS, MUL, DIV, MOD, NEW,
 		 AND, OR, QUESTION, COLON, IF, ELSE, SWITCH, 
-		 CASE, FOR, ENUM, CLASS, EXTENDS, ABSTRACT;
+		 CASE, FOR, ENUM, CLASS, EXTENDS, ABSTRACT, SWAP;
 
 terminal FINDANY, MAP, ARROW;
 
@@ -304,6 +304,8 @@ Statement ::= (StatementDesignator) DesignatorStatement SEMI
 			|
 			(StatementContinue) CONTINUE SEMI
 			|
+			(StatementSwap)SWAP LPAREN Designator AfterFirst COMMA Designator AfterSecond RPAREN SEMI
+			|
 			(StatementReturn) RETURN SEMI
 			|
 			(StatementFindAny) Designator Assignop Designator DOT FINDANY LPAREN Expr RPAREN SEMI
@@ -318,8 +320,16 @@ Statement ::= (StatementDesignator) DesignatorStatement SEMI
 			|
 			(StatementBlock) LBRACE StatementList RBRACE
 			|
+			(StatementDoWhile)DoStart Statement  WHILE LPAREN Condition RPAREN SEMI
+			|
 			(StatementRecovery)error SEMI
 			;
+
+DoStart ::= (DoStart)DO;
+
+AfterSecond ::= (AfterSecond)/*epsilon*/;
+
+AfterFirst ::= (AfterFirst)/*epsilon*/;
 
 IdentName ::= (IdentName) IDENT;
 

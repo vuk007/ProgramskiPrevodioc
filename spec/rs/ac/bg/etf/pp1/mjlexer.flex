@@ -67,7 +67,9 @@ import java_cup.runtime.Symbol;
 "=>"      	{ return new_symbol(sym.ARROW); }
 "switch"    { return new_symbol(sym.SWITCH); }
 "case"      { return new_symbol(sym.CASE); }
-
+"swap"		{return new_symbol(sym.SWAP);}
+"while"		{return new_symbol(sym.WHILE);}
+"do"		{return new_symbol(sym.DO);}
 
 /* =========================
    OPERATORS

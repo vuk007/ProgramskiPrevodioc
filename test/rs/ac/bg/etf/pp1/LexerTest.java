@@ -3,7 +3,7 @@ package rs.ac.bg.etf.pp1;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.Reader;
-
+import java.lang.reflect.Field;
 
 import java_cup.runtime.Symbol;
 
@@ -11,7 +11,7 @@ public class LexerTest {
 
 	private static String getTokenName(int token) {
 	    try {
-	        for (var field : sym.class.getFields()) {
+	        for (Field field : sym.class.getFields()) {
 	            if (field.getType() == int.class && field.getInt(null) == token) {
 	                return field.getName();
 	            }

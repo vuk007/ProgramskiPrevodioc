@@ -1,0 +1,13 @@
+#Mon Sep 07 15:29:22 CEST 2026
+\!/=
+/instance/org.eclipse.jdt.core/org.eclipse.jdt.core.compiler.codegen.targetPlatform=21
+/instance/org.eclipse.jdt.core/org.eclipse.jdt.core.compiler.compliance=21
+/instance/org.eclipse.jdt.core/org.eclipse.jdt.core.compiler.release=enabled
+/instance/org.eclipse.jdt.core/org.eclipse.jdt.core.compiler.source=21
+/instance/org.eclipse.jdt.launching/org.eclipse.jdt.launching.PREF_VM_XML=<?xml version\="1.0" encoding\="UTF-8" standalone\="no"?>\r\n<vmSettings defaultVM\="57,org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType28,C\:\\Program Files\\Java\\jdk-24" defaultVMConnector\="">\r\n    <vmType id\="org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType">\r\n        <vm id\="1770557378412" name\="jre" path\="C\:\\Users\\vuk00\\.p2\\pool\\plugins\\org.eclipse.justj.openjdk.hotspot.jre.full.win32.x86_64_21.0.8.v20250724-1412\\jre"/>\r\n        <vm id\="C\:\\Program Files\\Java\\jdk-24" name\="jdk-24" path\="C\:\\Program Files\\Java\\jdk-24"/>\r\n        <vm id\="C\:\\Program Files\\Eclipse Adoptium\\jdk-21.0.5.11-hotspot" name\="jdk-21.0.5.11-hotspot" path\="C\:\\Program Files\\Eclipse Adoptium\\jdk-21.0.5.11-hotspot"/>\r\n        <vm id\="C\:\\Program Files (x86)\\Java\\jre1.8.0_503" name\="jre1.8.0_503" path\="C\:\\Program Files (x86)\\Java\\jre1.8.0_503"/>\r\n    </vmType>\r\n</vmSettings>\r\n
+/instance/org.eclipse.jdt.ui/org.eclipse.jdt.ui.formatterprofiles.version=23
+/instance/org.eclipse.jdt.ui/org.eclipse.jdt.ui.text.custom_code_templates=<?xml version\="1.0" encoding\="UTF-8" standalone\="no"?><templates><template autoinsert\="false" context\="methodbody_context" deleted\="false" description\="Code in created method stubs" enabled\="true" id\="org.eclipse.jdt.ui.text.codetemplates.methodbody" name\="methodbody"/></templates>
+@org.eclipse.jdt.core=3.42.0.v20250523-0728
+@org.eclipse.jdt.launching=3.23.300.v20250401-0654
+@org.eclipse.jdt.ui=3.35.0.v20250521-0737
+file_export_version=3.0

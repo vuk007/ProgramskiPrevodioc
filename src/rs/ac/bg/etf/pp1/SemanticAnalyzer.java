@@ -59,6 +59,7 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 	
 	private int forDepth = 0;
 	private int switchDepth = 0; 
+	private int whileDepth = 0;
 	//za proveru break uslova; 
 	
 	private ArrayList<enum$elem> enum$list = new ArrayList<>();
@@ -119,7 +120,7 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 	}
 	
 	private boolean hasThis(Obj method) {
-	    var it = method.getLocalSymbols().iterator();
+	    Iterator<Obj> it = method.getLocalSymbols().iterator();
 	    return it.hasNext() && it.next().getName().equals("this");
 	}
 	
@@ -230,8 +231,8 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 	@Override
 	public void visit(ConstItem ConstItem) {
 	    if (current$type.equals("bool") || current$type.equals("char") || current$type.equals("int")) {
-	        var type$pointer = Tab.find(current$type);
-	        var struct = Tab.insert(Obj.Con, current$name, type$pointer.getType());
+	        Obj type$pointer = Tab.find(current$type);
+	        Obj struct = Tab.insert(Obj.Con, current$name, type$pointer.getType());
 	        struct.setLevel(1);
 	        if (current$type.equals("char")) {
 	            try { struct.setAdr((char) current$value); }
@@ -253,12 +254,12 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 		}
 		else {
 			if(is$array) {
-				var struct$array = new Struct(Struct.Array);
+				Struct struct$array = new Struct(Struct.Array);
 				struct$array.setElementType(Tab.find(current$type).getType());
 				Tab.insert(part$of$class ? Obj.Fld:Obj.Var, current$name, struct$array);
 			}
 			else {		
-				var struct = Tab.find(current$type).getType();
+				Struct struct = Tab.find(current$type).getType();
 				if(!struct.equals(Tab.noType)) {
 				Tab.insert(part$of$class ? Obj.Fld:Obj.Var, current$name, struct);	
 				}else {
@@ -276,11 +277,11 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 		}
 		else {
 			if(is$array) {
-				var struct$array = new Struct(Struct.Array);
+				Struct struct$array = new Struct(Struct.Array);
 				struct$array.setElementType(Tab.find(current$type).getType());
 				Tab.insert(part$of$class ? Obj.Fld:Obj.Var, current$name, struct$array);
 			}else {
-				var struct = Tab.find(current$type).getType();
+				Struct struct = Tab.find(current$type).getType();
 				if(!struct.equals(Tab.noType)) {
 				Tab.insert(part$of$class ? Obj.Fld:Obj.Var, current$name, struct);	
 				}else {
@@ -300,7 +301,7 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 	@Override
 	public void visit(EnumConstNoVal EnumConstNoVal){
 		try {	
-			enum$list.add(new enum$elem(EnumConstNoVal.getI1(), enum$list.getLast().val + 1));
+			enum$list.add(new enum$elem(EnumConstNoVal.getI1(), enum$list.get(enum$list.size()-1).val + 1));
 		}catch (Exception e) {
 			enum$list.add(new enum$elem(EnumConstNoVal.getI1(), 0));
 		}
@@ -316,7 +317,7 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 		if(Tab.currentScope().findSymbol(current$name) != null){
 			report_error(current$name + " je vec definisana", EnumDecl);
 		}else {
-		var enumType = new Struct(Struct.Enum);
+		Struct enumType = new Struct(Struct.Enum);
 		enumType.setElementType(Tab.intType);
 		Tab.insert(Obj.Type, current$name, enumType);
 		Tab.openScope();
@@ -324,9 +325,9 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 		enum$list.sort(Comparator.comparingInt(e -> e.val));
 		checkEnumElements(EnumDecl);
 		//----------
-		for (var obj:enum$list) {
+		for (enum$elem obj:enum$list) {
 			
-			var inst = Tab.insert(Obj.Con, obj.name, Tab.intType);
+			Obj inst = Tab.insert(Obj.Con, obj.name, Tab.intType);
 			inst.setAdr(obj.val);
 		}
 		Tab.chainLocalSymbols(enumType);
@@ -355,7 +356,7 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 	public void visit(ClassDecl ClassDecl) {
 		Tab.chainLocalSymbols(struct$holder);
 		Tab.closeScope();
-		for(var obj : struct$holder.getMembers()) {
+		for(Obj obj : struct$holder.getMembers()) {
 			if(obj.getKind() == Obj.Fld) {
 				obj.setAdr(obj.getAdr() + 1);
 			}
@@ -368,7 +369,7 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 	}
 	
 	private void isImplemented(Struct concreteClass, SyntaxNode node) {
-	    for (var member : concreteClass.getMembers()) {
+	    for (Obj member : concreteClass.getMembers()) {
 	        if (member.getKind() == Obj.Meth && abstractMethods.contains(member)) {
 	            //ulazi ovde ako je onaj isti objekat iz klase iznad
 	        	//ako je redefinisan promenice se u methodname novim objektom
@@ -406,8 +407,8 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 			    Iterator<Obj> it2 = decObj.getLocalSymbols().iterator();
 			    int i = 0;
 			    while (i<decObj.getAdr()) {
-			        var i1 = it1.next();
-			        var i2 = it2.next();
+			        Obj i1 = it1.next();
+			        Obj i2 = it2.next();
 			        if (i1.getName().equals("this") || i2.getName().equals("this")) continue;
 			        if (!i1.getType().equals(i2.getType())) {
 			            report_error(i1.getName() + " argumenti nisu istog tipa", MethodDecl);
@@ -449,7 +450,7 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 			if(!part$of$class) {
 				report_error(current$name + " je vec definisana", MethodName);
 			}else {
-				 var struct = Tab.find(current$type).getType();
+				 Struct struct = Tab.find(current$type).getType();
 				    Struct expectedType = is$void ? Tab.noType : struct;
 				    if (!expectedType.equals(obj.getType())) {
 				        report_error(current$name + " redefinicija mora imati isti povratni tip kao u baznoj klasi", MethodName);
@@ -468,7 +469,7 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 			}
 		}
 		else {
-			var struct = Tab.find(current$type).getType();
+			Struct struct = Tab.find(current$type).getType();
 			if(!struct.equals(Tab.noType) || is$void) {
 				obj$holder = Tab.insert(Obj.Meth, current$name,is$void? Tab.noType:struct);
 				is$void = false;
@@ -505,7 +506,7 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 			}
 			if(!struct.equals(Tab.noType)) {
 				obj$holder.setLevel(obj$holder.getLevel() + 1);
-				var paramObj = Tab.insert(Obj.Var, current$name, struct);
+				Obj paramObj = Tab.insert(Obj.Var, current$name, struct);
 				paramObj.setFpPos(obj$holder.getLevel() - 1);  
 				paramObj.setLevel(1);
 			}else {
@@ -517,7 +518,7 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 	public void visit(AbstractClassDecl AbstractClassDecl) {
 		Tab.chainLocalSymbols(struct$holder);
 		Tab.closeScope();
-		for(var obj : struct$holder.getMembers()) {
+		for(Obj obj : struct$holder.getMembers()) {
 			if(obj.getKind() == Obj.Fld) {
 				obj.setAdr(obj.getAdr() + 1);
 			}
@@ -573,10 +574,10 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 			report_error(ExtendsToType.getType().getI1() + " nije klasa", ExtendsToType);
 		}
 		else {
-			var struct = object.getType();
+			Struct struct = object.getType();
 			struct$holder.setElementType(struct);
 			ArrayDeque<Obj> arr = new ArrayDeque<>();;
-			for(var member : struct.getMembers()) {
+			for(Obj member : struct.getMembers()) {
 				if(member.getKind() == Obj.Fld)
 					Tab.insert(member.getKind(),member.getName(), member.getType());				
 				else if(member.getKind() == Obj.Meth) {
@@ -592,7 +593,7 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 	    if (!class$methods$stack.isEmpty()) {
 	        class$methods = class$methods$stack.pop();
 	        while (!class$methods.isEmpty()) {
-	            var method = class$methods.pop();
+	            Obj method = class$methods.pop();
 	            Tab.currentScope().addToLocals(method);   // ISTA instanca, ne nova!
 	        }
 	        class$methods.clear();
@@ -681,7 +682,7 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 	public void visit(FactorNewArray factorNewArray){
 		try {
 			current$name = factorNewArray.getType().getI1();
-			var type = Tab.find(current$name).getType();
+			Struct type = Tab.find(current$name).getType();
 			int kind = type.getKind();
 			if (kind != Struct.Int && kind != Struct.Char && kind != Struct.Enum && kind != Struct.Class) {
 			    report_error("niz mora biti tipa int, char, bool ili nabrajanje", factorNewArray);
@@ -700,7 +701,7 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 	
 	@Override
 	public void visit(FactorNewObj FactorNewObj) {
-		var type = Tab.find(current$type);
+		Obj type = Tab.find(current$type);
 		if(type.equals(Tab.noObj))report_error(current$type + " nije postojaci tip", FactorNewObj);
 		else {
 			if(type.getType().getKind() != Struct.Class)report_error(current$type + " nije tip klase", FactorNewObj);
@@ -914,8 +915,14 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 	        report_error("Designator u read() mora biti tipa int, char ili bool", StatementRead);
 	    }
 	}
-	
-	
+	@Override
+	public void visit(StatementDoWhile StatementDoWhile) {
+		whileDepth--;
+	}
+	@Override
+	public void visit(DoStart DoStart) {
+		whileDepth++;
+	}
 	@Override
 	public void visit(ForHeader ForHeader) {
 	    forDepth++;
@@ -927,16 +934,17 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 	  
 	}
 
+
 	@Override
 	public void visit(StatementBreak StatementBreak) {
-	    if (forDepth == 0 && switchDepth == 0) {
+	    if (forDepth == 0 && switchDepth == 0 && whileDepth == 0) {
 	        report_error("break se moze koristiti samo unutar for petlje ili switch bloka", StatementBreak);
 	    }
 	}
 
 	@Override
 	public void visit(StatementContinue StatementContinue) {
-	    if (forDepth == 0) {
+	    if (forDepth == 0 && whileDepth==0) {
 	        report_error("continue se moze koristiti samo unutar for petlje", StatementContinue);
 	    }
 	}
@@ -1077,6 +1085,26 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 	    if (!expr$type.equals(assing$type.getElemType())) {
 	        report_error("izraz u map mora biti istog tipa kao elementi rezultujuceg niza", StatementMap);
 	    }
+	}
+	
+	@Override
+	public void visit(AfterFirst AfterFirst) {
+		resolved$type.put(AfterFirst, expr$type);
+	}
+	@Override
+	public void visit(AfterSecond AfterSecond) {
+		resolved$type.put(AfterSecond, expr$type);
+	}
+	@Override
+	public void visit(StatementSwap StatementSwap) {
+		Struct first$type = resolved$type.get(StatementSwap.getAfterFirst());
+		Struct second$type = resolved$type.get(StatementSwap.getAfterSecond());
+		System.out.println(first$type.getKind() + " : " +second$type.getKind());
+		if(first$type.getKind() != second$type.getKind() || !(assignCompatible(first$type, second$type)&&
+				assignCompatible(second$type, first$type)))
+			report_error("nisu kompatibilni tipovi",StatementSwap);
+		
+		
 	}
 	
 }
