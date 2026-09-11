@@ -26,7 +26,7 @@ public class LexerTest {
     public static void main(String[] args) {
 
         try {
-            Reader r = new BufferedReader(new FileReader("test.txt"));
+            Reader r = new BufferedReader(new FileReader("test1.txt"));
 
             Yylex y = new Yylex(r);
             System.out.println("POCETAK \n");

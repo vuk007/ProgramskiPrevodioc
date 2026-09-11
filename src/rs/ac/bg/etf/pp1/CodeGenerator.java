@@ -944,5 +944,26 @@ public class CodeGenerator extends VisitorAdaptor{
 		continue$target$stack.push(code.pc);
 		break$stack.push(new ArrayList<>());
 	}
+	
+	@Override
+	public void visit(StatementIfSwap StatementIfSwap) {
+		Obj a = designator$stack.pop();
+		code.put(code.dup_x1);
+		code.put(code.pop);
+		code.load(a);
+		code.put(code.jcc + code.eq);
+		int skok = code.pc;
+		code.put2(0);
+		
+		// nisu jednaki 
+		code.store(a);
+		int jmp_end = code.pc+1;
+		code.putJump(0);
+		// jednaki
+		code.fixup(skok);
+		code.put(code.pop);
+		//kraj 
+		code.fixup(jmp_end);
+	}
 }
 

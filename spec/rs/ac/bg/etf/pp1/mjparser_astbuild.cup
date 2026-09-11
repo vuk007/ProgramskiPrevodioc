@@ -45,6 +45,8 @@ nonterminal
 nonterminal MethodType MethodType;
 nonterminal FormPars FormPars;
 nonterminal ParameterName ParameterName;
+nonterminal AfterFirstS AfterFirstS;
+nonterminal AfterSecondS AfterSecondS;
 nonterminal
 			EnumDecl EnumDecl;
 nonterminal EnumConstList EnumConstList;
@@ -368,6 +370,8 @@ Statement ::= (StatementDesignator) DesignatorStatement:D1 SEMI {: RESULT=new St
 			|
 			(StatementBreak) BREAK SEMI {: RESULT=new StatementBreak(); :}
 			|
+			(StatementIfSwap)Designator:D1 QUESTION Expr:E2 AfterFirstS:A3 COLON Expr:E4 AfterSecondS:A5 SEMI {: RESULT=new StatementIfSwap(D1, E2, A3, E4, A5); RESULT.setLine(D1left); :}
+			|
 			(StatementContinue) CONTINUE SEMI {: RESULT=new StatementContinue(); :}
 			|
 			(StatementSwap)SWAP LPAREN Designator:D1 AfterFirst:A2 COMMA Designator:D3 AfterSecond:A4 RPAREN SEMI {: RESULT=new StatementSwap(D1, A2, D3, A4); RESULT.setLine(D1left); :}
@@ -396,6 +400,10 @@ DoStart ::= (DoStart)DO {: RESULT=new DoStart(); :};
 AfterSecond ::= (AfterSecond) {: RESULT=new AfterSecond(); :}/*epsilon*/;
 
 AfterFirst ::= (AfterFirst) {: RESULT=new AfterFirst(); :}/*epsilon*/;
+
+AfterSecondS ::= (AfterSecondS) {: RESULT=new AfterSecondS(); :}/*epsilon*/;
+
+AfterFirstS ::= (AfterFirstS) {: RESULT=new AfterFirstS(); :};
 
 IdentName ::= (IdentName) IDENT:I1 {: RESULT=new IdentName(I1); RESULT.setLine(I1left); :};
 

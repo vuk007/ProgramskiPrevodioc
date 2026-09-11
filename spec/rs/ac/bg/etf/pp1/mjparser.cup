@@ -22,7 +22,7 @@ parser code {:
 nonterminal Program, ProgramName, DeclList, Decl, ConstDecl, VarDecl, Type,
 			ConstName, ConstPart, ConstItem, ConstNameList, numConst, charConst, boolConst,
 			VarName, ArrayIdent, MethodDeclList, MethodDecl, MethodVarList,
-			MethodName, MethodType, FormPars, ParameterName,
+			MethodName, MethodType, FormPars, ParameterName, AfterFirstS, AfterSecondS,
 			EnumDecl, EnumConstList, EnumConst, IdentName;
 
 nonterminal Statement, StatementList, DesignatorStatement, Designator,
@@ -302,6 +302,8 @@ Statement ::= (StatementDesignator) DesignatorStatement SEMI
 			|
 			(StatementBreak) BREAK SEMI
 			|
+			(StatementIfSwap)Designator QUESTION Expr AfterFirstS COLON Expr AfterSecondS SEMI
+			|
 			(StatementContinue) CONTINUE SEMI
 			|
 			(StatementSwap)SWAP LPAREN Designator AfterFirst COMMA Designator AfterSecond RPAREN SEMI
@@ -330,6 +332,10 @@ DoStart ::= (DoStart)DO;
 AfterSecond ::= (AfterSecond)/*epsilon*/;
 
 AfterFirst ::= (AfterFirst)/*epsilon*/;
+
+AfterSecondS ::= (AfterSecondS)/*epsilon*/;
+
+AfterFirstS ::= (AfterFirstS);
 
 IdentName ::= (IdentName) IDENT;
 
