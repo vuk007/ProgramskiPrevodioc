@@ -103,7 +103,7 @@ public class CodeGenerator extends VisitorAdaptor{
 	    vtable$temp$obj.setLevel(0);
 	    vtable$temp$obj.setAdr(code.dataSize++);
 	    
-	    temp1 = new Obj(Obj.Var, "$temp2", Tab.intType);
+	    temp1 = new Obj(Obj.Var, "$temp1", Tab.intType);
 	    temp1.setLevel(0);
 	    temp1.setAdr(code.dataSize++);
 	    
@@ -944,26 +944,124 @@ public class CodeGenerator extends VisitorAdaptor{
 		continue$target$stack.push(code.pc);
 		break$stack.push(new ArrayList<>());
 	}
+	Obj condAssignTarget;
+	@Override
+	public void visit(CondAssignAfterDes CondAssignAfterDes) {
+		Obj d = designator$stack.pop();
+		condAssignTarget = d;
+
+	    if (d.getKind() == Obj.Fld) {
+	        Code.put(Code.dup);
+	        Code.store(temp1);
+	    } else if (d.getKind() == Obj.Elem) {
+	        Code.put(Code.dup2);
+	        Code.store(temp1);  
+	        Code.store(temp2);
+	    }
+	    Code.load(d);  
+	}
+	int s = 0;
+	@Override
+	public void visit(CondAssignAfterExpr1 CondAssignAfterExpr1) {
+		s = code.pc+1;
+		code.putFalseJump(code.ne, 0);
+	    if (condAssignTarget.getKind() == Obj.Fld) {
+	        Code.load(temp1);
+	    }
+	    else {
+	    	code.load(temp1);
+	    	code.load(temp2);
+	    }
+	}
 	
 	@Override
 	public void visit(StatementIfSwap StatementIfSwap) {
-		Obj a = designator$stack.pop();
-		code.put(code.dup_x1);
-		code.put(code.pop);
-		code.load(a);
-		code.put(code.jcc + code.eq);
-		int skok = code.pc;
-		code.put2(0);
+		code.store(condAssignTarget);
+		code.fixup(s);
+	}
+	
+	@Override
+	public void visit(FilterExpr1End FilterIdentEnd) {
+		code.store(temp1);
+	}
+	
+	private Obj filter$result;
+	private Obj filter$source;
+	
+	Obj ident;
+	int skok$provera = 0;
+	int skok$cuvanje = 0;
+	@Override
+	public void visit(FilterIdentEnd FilterIdentEnd) {
+	    Obj sourceArray = designator$stack.pop();
+	    Obj resultArray = designator$stack.pop();
+	    ident = obj$pointers.get(FilterIdentEnd);
+	    
+	    filter$result = resultArray;
+	    filter$source = sourceArray;
+	    Code.load(sourceArray);
+	    Code.put(Code.arraylength);
+	    Code.put(Code.newarray);
+	    Struct resultElemType = resultArray.getType().getElemType();
+	    Code.put(resultElemType.equals(Tab.charType) ? 0 : 1);
+	    Code.store(resultArray);
+
+	    Code.load(array$len$obj);
+	    Code.loadConst(0);
+	    Code.store(IDX_FIELD);
+
+	    pendingMapLoopStart = Code.pc;
+	    Code.load(array$len$obj);
+	    Code.load(IDX_FIELD);
+	    Code.load(sourceArray);
+	    Code.put(Code.arraylength);
+	    pendingMapExitPatch = Code.pc + 1;
+	    Code.putFalseJump(Code.lt, 0);
+
+	    Code.load(sourceArray);
+	    Code.load(array$len$obj);
+	    Code.load(IDX_FIELD);
+	    Code.put(Code.aload);
+	    code.put(code.dup);
+	    Code.store(temp2);
+	    Code.store(ident);
+	    
+	    code.load(ident);
+	    code.load(temp1);
+	    skok$cuvanje = code.pc+1;
+	    code.putFalseJump(code.eq, 0);
+	    
+
+	    Code.load(resultArray);
+	    Code.load(array$len$obj);
+	    Code.load(IDX_FIELD);
 		
-		// nisu jednaki 
-		code.store(a);
-		int jmp_end = code.pc+1;
-		code.putJump(0);
-		// jednaki
-		code.fixup(skok);
-		code.put(code.pop);
-		//kraj 
-		code.fixup(jmp_end);
+	}
+	
+	@Override
+	public void visit(StatementFilter StatementFilter) {
+	    Code.put(Code.astore);            // upisi Expr2 (jednako-grana)
+	    int skipPatch = Code.pc + 1;
+	    Code.putJump(0);
+
+	    Code.fixup(skok$cuvanje);
+	    Code.load(filter$result);
+	    Code.load(array$len$obj);
+	    Code.load(IDX_FIELD);
+	    Code.load(temp2);                  // nepromenjena vrednost - reciklirano
+	    Code.put(Code.astore);
+
+	    Code.fixup(skipPatch);
+
+	    Code.load(array$len$obj);
+	    Code.load(array$len$obj);
+	    Code.load(IDX_FIELD);
+	    Code.loadConst(1);
+	    Code.put(Code.add);
+	    Code.store(IDX_FIELD);
+	    Code.putJump(pendingMapLoopStart);
+
+	    Code.fixup(pendingMapExitPatch);
 	}
 }
 

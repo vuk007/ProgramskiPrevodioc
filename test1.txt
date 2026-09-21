@@ -1,5 +1,5 @@
 program p
-Class B{}
+Class B{int bb;}
 class A {
 	int a;
 	B b; 
@@ -10,9 +10,10 @@ int i , x[];
 {
 	void main()int z,k ; bool a; {
 		klasaA = new A;
-		klasaA.a = 3;
-		z = 2; 
-		klasaA.a ? z : 10 + 2;
-		print(klasaA.a);
+		klasaA.b = new B;
+		klasaA.b.bb = 52;
+		z = 100; 
+		klasaA.b.bb ? z : 10 + 2;
+		print(klasaA.b.bb);
 	}
 }

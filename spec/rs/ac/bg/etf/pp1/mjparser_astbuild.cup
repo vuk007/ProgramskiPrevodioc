@@ -45,8 +45,8 @@ nonterminal
 nonterminal MethodType MethodType;
 nonterminal FormPars FormPars;
 nonterminal ParameterName ParameterName;
-nonterminal AfterFirstS AfterFirstS;
-nonterminal AfterSecondS AfterSecondS;
+nonterminal CondAssignAfterExpr1 CondAssignAfterExpr1;
+nonterminal CondAssignAfterDes CondAssignAfterDes;
 nonterminal
 			EnumDecl EnumDecl;
 nonterminal EnumConstList EnumConstList;
@@ -103,14 +103,15 @@ nonterminal AfterFirst AfterFirst;
 nonterminal AfterSecond AfterSecond;
 nonterminal DoStart DoStart;
 
- 
+ nonterminal FilterExpr1End FilterExpr1End;
+nonterminal FilterIdentEnd FilterIdentEnd;
 
 terminal LBRACE, RBRACE, PROG, ASSIGN, CONST, SEMI,
 		 COMMA, LBRACK, RBRACK, WHILE, DO,
 		 VOID, LPAREN, RPAREN, INC, DEC, DOT, LENGTH,
 		 BREAK, READ, RETURN, PRINT, CONTINUE, EQ, NEQ, LE, 
 		 LT, GE, GT, PLUS, MINUS, MUL, DIV, MOD, NEW,
-		 AND, OR, QUESTION, COLON, IF, ELSE, SWITCH, 
+		 AND, OR, QUESTION, COLON, IF, ELSE, SWITCH, FILTER, 
 		 CASE, FOR, ENUM, CLASS, EXTENDS, ABSTRACT, SWAP;
 
 terminal FINDANY, MAP, ARROW;
@@ -370,7 +371,7 @@ Statement ::= (StatementDesignator) DesignatorStatement:D1 SEMI {: RESULT=new St
 			|
 			(StatementBreak) BREAK SEMI {: RESULT=new StatementBreak(); :}
 			|
-			(StatementIfSwap)Designator:D1 QUESTION Expr:E2 AfterFirstS:A3 COLON Expr:E4 AfterSecondS:A5 SEMI {: RESULT=new StatementIfSwap(D1, E2, A3, E4, A5); RESULT.setLine(D1left); :}
+			(StatementIfSwap)Designator:D1 CondAssignAfterDes:C2 QUESTION Expr:E3 CondAssignAfterExpr1:C4 COLON Expr:E5 SEMI {: RESULT=new StatementIfSwap(D1, C2, E3, C4, E5); RESULT.setLine(D1left); :}
 			|
 			(StatementContinue) CONTINUE SEMI {: RESULT=new StatementContinue(); :}
 			|
@@ -390,6 +391,8 @@ Statement ::= (StatementDesignator) DesignatorStatement:D1 SEMI {: RESULT=new St
 			|
 			(StatementBlock) LBRACE StatementList:S1 RBRACE {: RESULT=new StatementBlock(S1); RESULT.setLine(S1left); :}
 			|
+			(StatementFilter) Designator:D1 Assignop:A2 Designator:D3 DOT FILTER LPAREN Expr:E4 FilterExpr1End:F5 COMMA IdentName:I6 FilterIdentEnd:F7 ARROW Expr:E8 RPAREN SEMI {: RESULT=new StatementFilter(D1, A2, D3, E4, F5, I6, F7, E8); RESULT.setLine(D1left); :}
+			|
 			(StatementDoWhile)DoStart:D1 Statement:S2  WHILE LPAREN Condition:C3 RPAREN SEMI {: RESULT=new StatementDoWhile(D1, S2, C3); RESULT.setLine(D1left); :}
 			|
 			(StatementRecovery)error SEMI {: RESULT=new StatementRecovery(); :}
@@ -397,13 +400,16 @@ Statement ::= (StatementDesignator) DesignatorStatement:D1 SEMI {: RESULT=new St
 
 DoStart ::= (DoStart)DO {: RESULT=new DoStart(); :};
 
+FilterExpr1End ::= (FilterExpr1End) {: RESULT=new FilterExpr1End(); :} /* epsilon */;
+FilterIdentEnd ::= (FilterIdentEnd) {: RESULT=new FilterIdentEnd(); :} /* epsilon */;
+
 AfterSecond ::= (AfterSecond) {: RESULT=new AfterSecond(); :}/*epsilon*/;
 
 AfterFirst ::= (AfterFirst) {: RESULT=new AfterFirst(); :}/*epsilon*/;
 
-AfterSecondS ::= (AfterSecondS) {: RESULT=new AfterSecondS(); :}/*epsilon*/;
+CondAssignAfterDes ::= (CondAssignAfterDes) {: RESULT=new CondAssignAfterDes(); :}/*epsilon*/;
 
-AfterFirstS ::= (AfterFirstS) {: RESULT=new AfterFirstS(); :};
+CondAssignAfterExpr1 ::= (CondAssignAfterExpr1) {: RESULT=new CondAssignAfterExpr1(); :};
 
 IdentName ::= (IdentName) IDENT:I1 {: RESULT=new IdentName(I1); RESULT.setLine(I1left); :};
 
